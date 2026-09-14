@@ -6,7 +6,7 @@ const Pago = require("../modelos/Pago");
 
 
 
-const ACCESS_TOKEN = "APP_USR-1492590052637591-050615-b26ff2d9d1b16ed2400aaf26152ab077-3382402657";
+const ACCESS_TOKEN = "XXXX";
 const POS_ID = "131648234";
 //Punto env para llamar al token y no tener el token en el código.
 
