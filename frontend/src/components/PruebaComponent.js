@@ -2,12 +2,15 @@ import React from 'react';
 import { useState, useRef } from 'react';
 import QRCode from 'react-qr-code';
 
+import { TablaBoletosComponent } from './TablaBoletosComponent';
+import { datosTemp } from '../contexto/QRContexto';
 
 
 const verMiPOS = async () => {
     try {
         const respuesta = await fetch("http://localhost:3600/api/ver-pos");
         const data = await respuesta.json();
+
         console.log("Respuesta:", data);
 
 
@@ -59,11 +62,16 @@ export const PruebaComponent = () => {
     const handlePasajeAdulto = async () => {
         const data = await pasajeAdulto();
         if (!data) return;
-        setValorQR(data.type_response.qr_data);
+
+        // setValorQR(data.type_response.qr_data);
+        
+        datosTemp.setValorQR(data.type_response.qr_data);
     };
+
     const handlePasajeEscolar = async () => {
         const data = await pasajeEscolar();
         if (!data) return;
+
         setValorQR(data.type_response.qr_data);
     };
 
@@ -76,7 +84,9 @@ export const PruebaComponent = () => {
             <button onClick={handlePasajeEscolar}>Crear Pasaje Escolar</button>
             <button onClick={handlePasajeAdulto}>Crear Pasaje Adulto</button><br/><br/>
 
-             {valorQR && <QRCode value={valorQR} />}
+            {/* {valorQR && <QRCode value={valorQR} />} */}
+
+            <TablaBoletosComponent />
 
         </div>
 

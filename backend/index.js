@@ -1,3 +1,7 @@
+// dotenv tiene que cargarse ANTES que cualquier otro require que use
+// process.env (conexion.js, controladores/pago.js, etc.), por eso va primero
+// que todo lo demás en el archivo.
+require("dotenv").config();
 // Es como realizar un import, aquí añadimos o incorporamos el archivo
 // de la conexión creada a la base de datos.
 // También importamos el modulo del servidor express y el cors para llamadas
@@ -5,6 +9,8 @@
 const { conexion } = require("./basedatos/conexion");
 const express = require("express");
 const cors = require("cors");
+
+
 
 
 //access_token = APP_USR-1492590052637591-050615-b26ff2d9d1b16ed2400aaf26152ab077-3382402657
@@ -20,7 +26,7 @@ conexion();
 
 // Crear servidor Node
 const app = express();
-const puerto = 3600;
+const puerto = process.env.PORT || 3600;
 
 // Configurar cors
 app.use(cors());
@@ -29,11 +35,6 @@ app.use(cors());
 app.use(express.json()); // recibir datos con content-type app/json
 app.use(express.urlencoded({extended:true})); // form-urlencoded
 
-// RUTA
-const rutas_articulo = require("./rutas/articulo");
-
-// Cargo las rutas
-app.use("/api", rutas_articulo);
 
 // Rutas prueba con datos en duro
 app.get("/probando", (req, res) => {

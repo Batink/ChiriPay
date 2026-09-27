@@ -1,17 +1,15 @@
-import logo from './logo.svg';
 import './App.css';
-
-import {PruebaComponent} from './components/PruebaComponent';
-import {TablaBoletosComponent} from './components/TablaBoletosComponent';
-
-
+ 
+import { Rutas } from './my_routes/Rutas';
+import { TablaBoletosComponent } from './components/TablaBoletosComponent';
+ 
 function App() {
   return (
     <div className="App">
-      <PruebaComponent /> <br/><br/>
-      <TablaBoletosComponent />
+      <Rutas />
     </div>
   );
 }
-
+ 
 export default App;
+ 

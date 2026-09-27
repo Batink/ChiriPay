@@ -1,24 +1,35 @@
 const fetch = require("node-fetch");
 const { randomUUID } = require('crypto');
 const Pago = require("../modelos/Pago");
-
-
-
-
-
-const ACCESS_TOKEN = "APP_USR-1492590052637591-050615-b26ff2d9d1b16ed2400aaf26152ab077-3382402657";
-const POS_ID = "131648234";
-//Punto env para llamar al token y no tener el token en el código.
-
+const OrdenActual = require("../modelos/OrdenActual");
+ 
+// Como solo hay una pantalla de QR por POS, guardamos siempre un único
+// documento con la última orden creada (upsert con filtro vacío) en vez de
+// llevar un historial. La pantalla del QR lo consulta por polling.
+const guardarOrdenActual = async ({ externalReference, qrData, titulo, monto }) => {
+    await OrdenActual.findOneAndUpdate(
+        {},
+        { externalReference, qrData, titulo, monto, creadoEn: new Date() },
+        { upsert: true, new: true }
+    );
+};
+ 
+const ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
+const POS_ID = process.env.MP_POS_ID;
+ 
+if (!ACCESS_TOKEN) {
+    console.warn("⚠️  Falta MP_ACCESS_TOKEN en el .env: las llamadas a Mercado Pago van a fallar.");
+}
+ 
 const listarPagos = async (req, res) => {
     try {
-        const pagos = await Pago.find();
+        const pagos = await Pago.find().sort({ date_created: -1 });
         return res.status(200).json({
             status: "Pagos obtenidos",
             total: pagos.length,
             pagos,
         });
-
+ 
     } catch (error) {
         return res.status(500).json({
             status: "error",
@@ -27,7 +38,7 @@ const listarPagos = async (req, res) => {
         });
     }
 };
-
+ 
 const verMiPOS = async (req, res) => {
     try {
         const respuesta = await fetch(`https://api.mercadopago.com/pos/${POS_ID}`, {
@@ -37,27 +48,27 @@ const verMiPOS = async (req, res) => {
                 "Content-Type": "application/json"
             }
         });
-
+ 
         const data = await respuesta.json();
-
+ 
         return res.status(200).json(data);
-
+ 
     } catch (error) {
         console.log(error);
         return res.status(500).json({ mensaje: "Error al llamar la API de MP" });
     }
 };
-
-
-
-
-
-
-
+ 
 const pasajeEscolar = async (req, res) => {
     try {
         const idempotencyKey = randomUUID();
-
+ 
+        // Antes esto era un string fijo ("PE-001"): todos los pasajes escolares
+        // compartían la misma referencia y no había forma de saber, mirando la
+        // colección de pagos, a cuál QR (a cuál compra) correspondía un webhook.
+        // Generamos una referencia única por cada orden creada.
+        const externalReference = `PE-${randomUUID()}`;
+ 
         const respuesta = await fetch(`https://api.mercadopago.com/v1/orders`, {
             method: "POST",
             headers: {
@@ -66,11 +77,11 @@ const pasajeEscolar = async (req, res) => {
                 "X-Idempotency-Key": idempotencyKey
             },
             body: JSON.stringify({
-
+ 
                 "type": "qr",
                 "total_amount": "500",
                 "description": "Pasaje escolar",
-                "external_reference": "PE-001",
+                "external_reference": externalReference,
                 "expiration_time": "PT5M",
                 "config": {
                     "qr": {
@@ -92,21 +103,31 @@ const pasajeEscolar = async (req, res) => {
                 }]
             })
         });
-
+ 
         const data = await respuesta.json();
-
+ 
+        if (data && data.type_response && data.type_response.qr_data) {
+            await guardarOrdenActual({
+                externalReference: data.external_reference,
+                qrData: data.type_response.qr_data,
+                titulo: "Pasaje Escolar",
+                monto: data.total_amount
+            });
+        }
+ 
         return res.status(200).json(data);
-
+ 
     } catch (error) {
         console.log(error);
         return res.status(500).json({ mensaje: "Error al llamar la API de MP" });
     }
 };
-
+ 
 const pasajeAdulto = async (req, res) => {
     try {
         const idempotencyKey = randomUUID();
-
+        const externalReference = `PA-${randomUUID()}`;
+ 
         const respuesta = await fetch(`https://api.mercadopago.com/v1/orders`, {
             method: "POST",
             headers: {
@@ -115,11 +136,11 @@ const pasajeAdulto = async (req, res) => {
                 "X-Idempotency-Key": idempotencyKey
             },
             body: JSON.stringify({
-
+ 
                 "type": "qr",
                 "total_amount": "1500",
                 "description": "Pasaje adulto",
-                "external_reference": "PA-001",
+                "external_reference": externalReference,
                 "expiration_time": "PT5M",
                 "config": {
                     "qr": {
@@ -134,7 +155,7 @@ const pasajeAdulto = async (req, res) => {
                         }
                     ]
                 },
-
+ 
                 "items": [{
                     "title": "Pasaje Adulto",
                     "unit_price": "1500",
@@ -143,31 +164,40 @@ const pasajeAdulto = async (req, res) => {
                 }]
             })
         });
-
+ 
         const data = await respuesta.json();
-
+ 
+        if (data && data.type_response && data.type_response.qr_data) {
+            await guardarOrdenActual({
+                externalReference: data.external_reference,
+                qrData: data.type_response.qr_data,
+                titulo: "Pasaje Adulto",
+                monto: data.total_amount
+            });
+        }
+ 
         return res.status(200).json(data);
-
+ 
     } catch (error) {
         console.log(error);
         return res.status(500).json({ mensaje: "Error al llamar la API de MP" });
     }
 };
-
+ 
 guardarPago = async (req, res) => {
     try {
         let parametros = req.body;
         //validarCaduco(parametros);
-
+ 
         const pago = new Pago(parametros);
         const pagoGuardado = await pago.save();
-
+ 
         return res.status(200).json({
             status: "éxito",
             pago: pagoGuardado,
             mensaje: "Pago registrado con éxito!! GRAAAAAAAAAAAAAAAAAAAAAAAAAAH"
         });
-
+ 
     } catch (error) {
         return res.status(400).json({
             status: "error",
@@ -175,64 +205,65 @@ guardarPago = async (req, res) => {
         });
     }
 }
-
-
-module.exports = { verMiPOS, pasajeEscolar, pasajeAdulto, guardarPago, listarPagos };
-
-
-// {
-//     "id": "ORDTST01KR71ACDBWDWZE4E2A1RBSMK9",
-//     "type": "qr",
-//     "processing_mode": "automatic",
-//     "external_reference": "PE-001",
-//     "description": "Pasaje escolar",
-//     "total_amount": "500",
-//     "expiration_time": "PT5M",
-//     "country_code": "CHL",
-//     "user_id": "3382402657",
-//     "status": "created",
-//     "status_detail": "created",
-//     "currency": "CLP",
-//     "created_date": "2026-05-09T18:52:11.24Z",
-//     "last_updated_date": "2026-05-09T18:52:11.24Z",
-//     "integration_data": {
-//         "application_id": "1492590052637591"
-//     },
-//     "config": {
-//         "qr": {
-//             "external_pos_id": "TRC001POS001",
-//             "mode": "dynamic"
-//         }
-//     },
-//     "transactions": {
-//         "payments": [
-//             {
-//                 "id": "PAY01KR71ACE87X6PTSA9XW4XZJFK",
-//                 "amount": "500",
-//                 "status": "created",
-//                 "status_detail": "ready_to_process"
-//             }
-//         ]
-//     },
-//     "items": [
-//         {
-//             "title": "Pasaje Escolar",
-//             "unit_price": "500",
-//             "unit_measure": "unit",
-//             "quantity": 1
-//         }
-//     ],
-//     "taxes": [
-//         {
-//             "payer_condition": "payment_taxable_iva"
-//         }
-//     ],
-//     "type_response": {
-//         "qr_data": "00020101021243650016COM.MERCADOLIBRE02013063605a3a452-61fe-4be2-b5fe-ff21a63fc5b4501300091111111115204970053031525802CL5909Test Test6009UNDEFINED63042C66"
-//     }
-// }
-
-
-// Conectar id webhook -> id creacion OP para mostrar el tipo de pasaje
-// ID de caja por patente de bus???
-// Actualizar status del pago y mostrar solo cuando este en procesado
+ 
+// Consulta el estado de un pago a partir del external_reference generado
+// al crear el pasaje. El webhook de MP (POST /webhook -> POST /api/guardar-pago)
+// va guardando en la colección "pagos" cada actualización que llega, así que
+// acá buscamos la más reciente que tenga esa misma referencia.
+const consultarEstadoPago = async (req, res) => {
+    try {
+        const referencia = req.params.referencia;
+ 
+        const pago = await Pago.findOne({ "data.external_reference": referencia })
+            .sort({ date_created: -1 });
+ 
+        if (!pago) {
+            return res.status(200).json({
+                status: "pendiente",
+                mensaje: "Aún no se ha recibido el pago"
+            });
+        }
+ 
+        return res.status(200).json({
+            status: pago.data.status,               // p.ej. "processed"
+            status_detail: pago.data.status_detail,  // p.ej. "accredited"
+            monto: pago.data.total_paid_amount,
+            pago
+        });
+ 
+    } catch (error) {
+        return res.status(500).json({
+            status: "error",
+            mensaje: "Error al consultar el estado del pago",
+            error: error.message
+        });
+    }
+};
+ 
+// Devuelve la última orden creada, sin importar quién ni desde qué
+// ventana/dispositivo la haya generado. La pantalla del QR la consulta
+// periódicamente (polling) para saber si tiene que mostrar un QR nuevo.
+const obtenerOrdenActual = async (req, res) => {
+    try {
+        const orden = await OrdenActual.findOne();
+ 
+        return res.status(200).json({ orden: orden || null });
+ 
+    } catch (error) {
+        return res.status(500).json({
+            status: "error",
+            mensaje: "Error al obtener la orden actual",
+            error: error.message
+        });
+    }
+};
+ 
+module.exports = {
+    verMiPOS,
+    pasajeEscolar,
+    pasajeAdulto,
+    guardarPago,
+    listarPagos,
+    consultarEstadoPago,
+    obtenerOrdenActual
+};
