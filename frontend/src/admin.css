@@ -1,0 +1,99 @@
+/* ChiriPay Admin: estilos globales.
+   Los colores viven en variables; el tema se cambia con data-theme en <html>. */
+
+*{box-sizing:border-box;margin:0}
+
+:root{
+  --bg:#f2f1ee;--s:#fff;--s2:#e9e7e1;--ln:#dad6cc;
+  --tx:#1b1913;--mu:#6c6555;
+  --y:#ffd60a;      /* amarillo de marca (rellenos) */
+  --ys:#c39b00;     /* borde del amarillo sobre fondos claros */
+  --yt:#7a5f00;     /* amarillo legible como texto/foco en claro */
+  --ink:#1b1913;    /* texto sobre amarillo */
+}
+@media(prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#141311;--s:#1f1d19;--s2:#2a2722;--ln:#38342c;
+    --tx:#f4f0e6;--mu:#a29a87;--ys:transparent;--yt:#ffd60a;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#141311;--s:#1f1d19;--s2:#2a2722;--ln:#38342c;
+  --tx:#f4f0e6;--mu:#a29a87;--ys:transparent;--yt:#ffd60a;
+}
+
+body{
+  background:var(--bg);color:var(--tx);
+  font:15px/1.45 'Bricolage Grotesque',system-ui,sans-serif;
+  font-variant-numeric:tabular-nums;
+}
+[hidden]{display:none!important}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--yt);outline-offset:2px}
+small{color:var(--mu);font-size:12.5px}
+h2{font-size:16px;font-weight:600;margin-bottom:12px}
+.muted{color:var(--mu)}
+.grow{flex:1}
+.r{text-align:right}
+
+/* ---------- Cabecera y navegación ---------- */
+.top{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:14px 24px;border-bottom:1px solid var(--ln)}
+.brand b{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.brand span{display:block;font-size:12px;color:var(--mu)}
+nav{display:flex;gap:4px;flex:1}
+nav a,.seg button{border:0;background:none;padding:7px 14px;border-radius:99px;cursor:pointer;color:var(--mu);text-decoration:none}
+nav a[aria-current="page"],.seg button[aria-pressed="true"]{background:var(--y);color:var(--ink);font-weight:600}
+
+/* ---------- Botones y campos ---------- */
+.btn{display:inline-block;background:var(--y);color:var(--ink);border:0;border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer;text-decoration:none}
+.btn.o{background:none;border:1px solid var(--ln);color:var(--tx)}
+.seg{display:inline-flex;background:var(--s2);border-radius:99px;padding:3px}
+select,input[type=date],input[type=text],input[type=number],input[type=email]{background:var(--s);border:1px solid var(--ln);border-radius:10px;padding:7px 10px}
+.amount{width:110px}
+.slider{width:100%;accent-color:var(--y)}
+
+/* ---------- Layout ---------- */
+.flt{display:flex;flex-wrap:wrap;gap:10px;padding:16px 24px;align-items:center;max-width:1328px;margin:auto}
+main{padding:0 24px 40px;display:grid;gap:16px;max-width:1328px;margin:auto}
+.g{display:grid;gap:16px}
+.k{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.m{grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr))}
+.m.a{grid-template-columns:2fr 1fr}
+@media(max-width:860px){.m.a{grid-template-columns:1fr}}
+
+/* ---------- Tarjetas ---------- */
+.card{background:var(--s);border:1px solid var(--ln);border-radius:14px;padding:18px;min-width:0}
+.card p{color:var(--mu);font-size:13px}
+.card strong{display:block;font-size:30px;font-weight:800;letter-spacing:-.02em}
+.hero{background:var(--y);border-color:var(--y);color:var(--ink)}
+.hero p,.hero small{color:#4d4310}
+.hero strong{font-size:42px}
+.hd{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.hd h2{margin:0}
+
+/* ---------- Tablas ---------- */
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;font-weight:600;color:var(--mu);padding:8px;border-bottom:1px solid var(--ln);white-space:nowrap}
+td{padding:8px;border-bottom:1px solid var(--ln);white-space:nowrap}
+th.r{text-align:right}
+.st{padding:2px 9px;border-radius:99px;background:var(--s2);font-size:12.5px}
+.st.on{background:var(--y);color:var(--ink)}
+.empty{padding:16px 8px;color:var(--mu)}
+
+/* ---------- Gráficos ---------- */
+.chart text{fill:var(--mu);font-size:11px}
+.chart .grid{stroke:var(--ln)}
+.chart .bar{fill:var(--y);stroke:var(--ys)}
+.tp{margin-bottom:14px}
+.tp div{display:flex;justify-content:space-between;gap:8px}
+.tp span{color:var(--mu);font-size:13px}
+.tp i{display:block;height:8px;border-radius:4px;background:var(--y);margin-top:6px;border:1px solid var(--ys)}
+
+/* ---------- Formularios de ajustes ---------- */
+.fm{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.row input[type=text]{flex:1;min-width:120px}
+
+/* ---------- Aviso temporal ---------- */
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:10px}
