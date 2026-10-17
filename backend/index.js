@@ -13,8 +13,6 @@ const cors = require("cors");
 
 
 
-//access_token = APP_USR-1492590052637591-050615-b26ff2d9d1b16ed2400aaf26152ab077-3382402657
-
 
 
 
@@ -88,6 +86,8 @@ app.post('/webhook', async (req, res) => {
 const rutas_pago = require("./rutas/pago");
 app.use("/api", rutas_pago);
 
+const rutas_bus = require("./rutas/bus");
+app.use("/api", rutas_bus);
 
 // Crear servidor y escuchar peticiones http
 app.listen(puerto, () => {

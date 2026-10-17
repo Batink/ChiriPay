@@ -1,59 +1,79 @@
 const validator = require("validator");
 
-const validarArticulo = (parametros) => {
+// ---------------------------------------------------------------------------
+// BUSES
+// ---------------------------------------------------------------------------
 
-    let validar_titulo = !validator.isEmpty(parametros.titulo) &&
-        validator.isLength(parametros.titulo, { min: 5, max: undefined });
-    let validar_contenido = !validator.isEmpty(parametros.contenido);
+// Valida (y limpia) los datos de un bus. Devuelve un objeto con los valores ya
+// normalizados, o lanza un Error con el detalle de lo que está mal.
+//
+//  - patente:     6 caracteres alfanuméricos. Se quitan espacios y guiones y se
+//                 pasa a mayúsculas ("fl-xt-12" -> "FLXT12"). Si necesitas otro
+//                 formato, cambia solo la expresión regular de abajo.
+//  - nombre:      es el "name" del POS en Mercado Pago: letras, números, guiones,
+//                 guiones bajos y espacios internos. Máximo 45 caracteres.
+//  - external_id: es el "external_id" del POS en Mercado Pago: solo letras y
+//                 números. Máximo 40 caracteres.
+//
+// Con { parcial: true } (para editar) solo se validan los campos que vengan en
+// el body, pero tiene que venir al menos uno.
 
-    if (!validar_titulo || !validar_contenido) {
-        throw new Error("No se ha validado la información !!");
+const validarBus = (parametros = {}, { parcial = false } = {}) => {
+
+    const errores = [];
+    const limpio = {};
+
+    // Acepta string o número (por si el JSON trae el external_id como número)
+    const texto = (valor) =>
+        (typeof valor === "string" || typeof valor === "number") ? String(valor) : "";
+
+    if (!parcial || parametros.patente !== undefined) {
+        const patente = texto(parametros.patente).replace(/[\s-]/g, "").toUpperCase();
+        if (!/^[A-Z0-9]{6}$/.test(patente)) {
+            errores.push("La patente debe tener 6 caracteres alfanuméricos (ej: FLXT12)");
+        } else {
+            limpio.patente = patente;
+        }
     }
+
+    if (!parcial || parametros.nombre !== undefined) {
+        const nombre = texto(parametros.nombre);
+        if (!validator.isLength(nombre, { min: 1, max: 45 }) ||
+            !/^[A-Za-z0-9_-]+(?: +[A-Za-z0-9_-]+)*$/.test(nombre)) {
+            errores.push("El nombre debe tener entre 1 y 45 caracteres: letras, números, guiones, guiones bajos y espacios internos");
+        } else {
+            limpio.nombre = nombre;
+        }
+    }
+
+    if (!parcial || parametros.external_id !== undefined) {
+        const external_id = texto(parametros.external_id);
+        if (!validator.isLength(external_id, { min: 1, max: 40 }) ||
+            !/^[A-Za-z0-9]+$/.test(external_id)) {
+            errores.push("El external_id debe tener entre 1 y 40 caracteres, solo letras y números (ej: TRC001POS001)");
+        } else {
+            limpio.external_id = external_id;
+        }
+    }
+
+    if (parcial && errores.length === 0 && Object.keys(limpio).length === 0) {
+        errores.push("No se envió ningún campo para actualizar (patente, nombre o external_id)");
+    }
+
+    if (errores.length > 0) {
+        throw new Error(errores.join(". "));
+    }
+
+    return limpio;
 }
 
-const validarIdArticulo = (id) => {
-    let validar_id = !validator.isEmpty(id) &&
-        validator.isLength(id, { min: 24, max: 24 });
-
-    if (!validar_id) {
-        throw new Error("No se ha validado el ID!!");
-    }
-}
-
-const validarUsuario = (parametros) => {
-
-    let validar_nombre = !validator.isEmpty(parametros.nombre_usuario) &&
-        validator.isLength(parametros.nombre_usuario, { min: 5, max: undefined });
-    let validar_password = !validator.isEmpty(parametros.password) && 
-     validator.isLength(parametros.password, { min: 6, max: 12 });
-
-    if (!validar_nombre || !validar_password) {
-        throw new Error("No se ha validado la información del usuario!!");
-    }
-}
-
-const validarNombreUsuario = (nombre) => {
-    let validar_nombre = !validator.isEmpty(nombre) &&
-        validator.isLength(nombre, { min: 5, max: undefined });
-
-    if (!validar_nombre) {
-        throw new Error("No se ha validado el nombre!");
-    }
-}
-
-const validarIdUsuario = (id) => {
-    let validar_id = !validator.isEmpty(id) &&
-        validator.isLength(id, { min: 24, max: 24 });
-
-    if (!validar_id) {
-        throw new Error("No se ha validado el ID!!");
+const validarIdBus = (id) => {
+    if (!validator.isMongoId(String(id))) {
+        throw new Error("El ID del bus tiene un formato incorrecto");
     }
 }
 
 module.exports = {
-    validarArticulo,
-    validarIdArticulo,
-    validarUsuario,
-    validarNombreUsuario,
-    validarIdUsuario
+    validarBus,
+    validarIdBus
 }
