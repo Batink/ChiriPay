@@ -3,6 +3,7 @@ import { Routes, Route, BrowserRouter } from 'react-router-dom';
  
 import { SeleccionPasajeComponent } from '../components/SeleccionPasajeComponent';
 import { QRComponent } from '../components/QRComponent';
+ import AdminApp from '../admin/AdminApp';
  
 export const Rutas = () => {
     return (
@@ -10,6 +11,7 @@ export const Rutas = () => {
             <Routes>
                 <Route path="/" element={<SeleccionPasajeComponent />} />
                 <Route path="/qr" element={<QRComponent />} />
+                 <Route path="/admin/*" element={<AdminApp />} />
             </Routes>
         </BrowserRouter>
     );

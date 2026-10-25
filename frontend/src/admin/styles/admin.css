@@ -1,0 +1,93 @@
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;600;800&display=swap');
+/* ChiriPay Admin: estilos del panel. Todo cuelga de .cp-admin para no afectar al resto de la app.
+   Los colores viven en variables; el tema se cambia con data-theme en el contenedor .cp-admin. */
+
+.cp-admin *{box-sizing:border-box;margin:0}
+.cp-admin{
+  --bg:#f2f1ee;--s:#fff;--s2:#e9e7e1;--ln:#dad6cc;
+  --tx:#1b1913;--mu:#6c6555;
+  --y:#ffd60a;      /* amarillo de marca (rellenos) */
+  --ys:#c39b00;     /* borde del amarillo sobre fondos claros */
+  --yt:#7a5f00;     /* amarillo legible como texto/foco en claro */
+  --ink:#1b1913;    /* texto sobre amarillo */
+}
+.cp-admin[data-theme="dark"]{
+  --bg:#141311;--s:#1f1d19;--s2:#2a2722;--ln:#38342c;
+  --tx:#f4f0e6;--mu:#a29a87;--ys:transparent;--yt:#ffd60a;
+}
+.cp-admin{
+  background:var(--bg);color:var(--tx);
+  font:15px/1.45 'Bricolage Grotesque',system-ui,sans-serif;
+  font-variant-numeric:tabular-nums;min-height:100vh;
+}
+.cp-admin [hidden]{display:none!important}
+.cp-admin button, .cp-admin select, .cp-admin input{font:inherit;color:inherit}
+.cp-admin :focus-visible{outline:2px solid var(--yt);outline-offset:2px}
+.cp-admin small{color:var(--mu);font-size:12.5px}
+.cp-admin h2{font-size:16px;font-weight:600;margin-bottom:12px}
+.cp-admin .muted{color:var(--mu)}
+.cp-admin .grow{flex:1}
+.cp-admin .r{text-align:right}
+
+/* ---------- Cabecera y navegación ---------- */
+.cp-admin .top{display:flex;gap:16px;align-items:center;flex-wrap:wrap;padding:14px 24px;border-bottom:1px solid var(--ln)}
+.cp-admin .brand b{font-size:24px;font-weight:800;letter-spacing:-.02em}
+.cp-admin .brand span{display:block;font-size:12px;color:var(--mu)}
+.cp-admin nav{display:flex;gap:4px;flex:1}
+.cp-admin nav a, .cp-admin .seg button{border:0;background:none;padding:7px 14px;border-radius:99px;cursor:pointer;color:var(--mu);text-decoration:none}
+.cp-admin nav a[aria-current="page"], .cp-admin .seg button[aria-pressed="true"]{background:var(--y);color:var(--ink);font-weight:600}
+
+/* ---------- Botones y campos ---------- */
+.cp-admin .btn{display:inline-block;background:var(--y);color:var(--ink);border:0;border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer;text-decoration:none}
+.cp-admin .btn.o{background:none;border:1px solid var(--ln);color:var(--tx)}
+.cp-admin .seg{display:inline-flex;background:var(--s2);border-radius:99px;padding:3px}
+.cp-admin select, .cp-admin input[type=date], .cp-admin input[type=text], .cp-admin input[type=number], .cp-admin input[type=email]{background:var(--s);border:1px solid var(--ln);border-radius:10px;padding:7px 10px}
+.cp-admin .amount{width:110px}
+.cp-admin .slider{width:100%;accent-color:var(--y)}
+
+/* ---------- Layout ---------- */
+.cp-admin .flt{display:flex;flex-wrap:wrap;gap:10px;padding:16px 24px;align-items:center;max-width:1328px;margin:auto}
+.cp-admin main{padding:0 24px 40px;display:grid;gap:16px;max-width:1328px;margin:auto}
+.cp-admin .g{display:grid;gap:16px}
+.cp-admin .k{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
+.cp-admin .m{grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr))}
+.cp-admin .m.a{grid-template-columns:2fr 1fr}
+
+@media(max-width:860px){.cp-admin .m.a{grid-template-columns:1fr}}
+
+/* ---------- Tarjetas ---------- */
+.cp-admin .card{background:var(--s);border:1px solid var(--ln);border-radius:14px;padding:18px;min-width:0}
+.cp-admin .card p{color:var(--mu);font-size:13px}
+.cp-admin .card strong{display:block;font-size:30px;font-weight:800;letter-spacing:-.02em}
+.cp-admin .hero{background:var(--y);border-color:var(--y);color:var(--ink)}
+.cp-admin .hero p, .cp-admin .hero small{color:#4d4310}
+.cp-admin .hero strong{font-size:42px}
+.cp-admin .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.cp-admin .hd h2{margin:0}
+
+/* ---------- Tablas ---------- */
+.cp-admin .tw{overflow-x:auto}
+.cp-admin table{width:100%;border-collapse:collapse;font-size:14px}
+.cp-admin th{text-align:left;font-weight:600;color:var(--mu);padding:8px;border-bottom:1px solid var(--ln);white-space:nowrap}
+.cp-admin td{padding:8px;border-bottom:1px solid var(--ln);white-space:nowrap}
+.cp-admin th.r{text-align:right}
+.cp-admin .st{padding:2px 9px;border-radius:99px;background:var(--s2);font-size:12.5px}
+.cp-admin .st.on{background:var(--y);color:var(--ink)}
+.cp-admin .empty{padding:16px 8px;color:var(--mu)}
+
+/* ---------- Gráficos ---------- */
+.cp-admin .chart text{fill:var(--mu);font-size:11px}
+.cp-admin .chart .grid{stroke:var(--ln)}
+.cp-admin .chart .bar{fill:var(--y);stroke:var(--ys)}
+.cp-admin .tp{margin-bottom:14px}
+.cp-admin .tp div{display:flex;justify-content:space-between;gap:8px}
+.cp-admin .tp span{color:var(--mu);font-size:13px}
+.cp-admin .tp i{display:block;height:8px;border-radius:4px;background:var(--y);margin-top:6px;border:1px solid var(--ys)}
+
+/* ---------- Formularios de ajustes ---------- */
+.cp-admin .fm{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.cp-admin .row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.cp-admin .row input[type=text]{flex:1;min-width:120px}
+
+/* ---------- Aviso temporal ---------- */
+.cp-admin .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:10px 16px;border-radius:10px}
