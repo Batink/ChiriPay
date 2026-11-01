@@ -1,5 +1,6 @@
 import './App.css';
  
+// import './admin.css';
 import { Rutas } from './my_routes/Rutas';
 import { TablaBoletosComponent } from './components/TablaBoletosComponent';
  

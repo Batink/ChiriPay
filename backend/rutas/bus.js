@@ -8,4 +8,4 @@ router.get("/buses/:id", BusControlador.listar_uno);
 router.put("/buses/:id", BusControlador.editar);
 router.delete("/buses/:id", BusControlador.borrar);
 
-module.exports = router;
+module.exports = router;    

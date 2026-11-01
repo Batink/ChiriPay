@@ -1,9 +1,10 @@
-/* ChiriPay Admin: estilos globales.
-   Los colores viven en variables; el tema se cambia con data-theme en <html>. */
+@import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;600;800&display=swap');
+/* ChiriPay Admin: estilos del panel. Todo cuelga de para no afectar al resto de la app.
+   Los colores viven en variables; el tema se cambia con data-theme en el contenedor .cp-admin. */
 
 *{box-sizing:border-box;margin:0}
 
-:root{
+.cp-admin{
   --bg:#f2f1ee;--s:#fff;--s2:#e9e7e1;--ln:#dad6cc;
   --tx:#1b1913;--mu:#6c6555;
   --y:#ffd60a;      /* amarillo de marca (rellenos) */
@@ -11,24 +12,17 @@
   --yt:#7a5f00;     /* amarillo legible como texto/foco en claro */
   --ink:#1b1913;    /* texto sobre amarillo */
 }
-@media(prefers-color-scheme:dark){
-  :root:not([data-theme="light"]){
-    --bg:#141311;--s:#1f1d19;--s2:#2a2722;--ln:#38342c;
-    --tx:#f4f0e6;--mu:#a29a87;--ys:transparent;--yt:#ffd60a;
-  }
-}
-:root[data-theme="dark"]{
+.cp-admin[data-theme="dark"]{
   --bg:#141311;--s:#1f1d19;--s2:#2a2722;--ln:#38342c;
   --tx:#f4f0e6;--mu:#a29a87;--ys:transparent;--yt:#ffd60a;
 }
-
-body{
+.cp-admin{
   background:var(--bg);color:var(--tx);
   font:15px/1.45 'Bricolage Grotesque',system-ui,sans-serif;
-  font-variant-numeric:tabular-nums;
+  font-variant-numeric:tabular-nums;min-height:100vh;
 }
 [hidden]{display:none!important}
-button,select,input{font:inherit;color:inherit}
+button, select, input{font:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--yt);outline-offset:2px}
 small{color:var(--mu);font-size:12.5px}
 h2{font-size:16px;font-weight:600;margin-bottom:12px}
@@ -41,14 +35,14 @@ h2{font-size:16px;font-weight:600;margin-bottom:12px}
 .brand b{font-size:24px;font-weight:800;letter-spacing:-.02em}
 .brand span{display:block;font-size:12px;color:var(--mu)}
 nav{display:flex;gap:4px;flex:1}
-nav a,.seg button{border:0;background:none;padding:7px 14px;border-radius:99px;cursor:pointer;color:var(--mu);text-decoration:none}
-nav a[aria-current="page"],.seg button[aria-pressed="true"]{background:var(--y);color:var(--ink);font-weight:600}
+nav a, .seg button{border:0;background:none;padding:7px 14px;border-radius:99px;cursor:pointer;color:var(--mu);text-decoration:none}
+nav a[aria-current="page"], .seg button[aria-pressed="true"]{background:var(--y);color:var(--ink);font-weight:600}
 
 /* ---------- Botones y campos ---------- */
 .btn{display:inline-block;background:var(--y);color:var(--ink);border:0;border-radius:10px;padding:8px 14px;font-weight:600;cursor:pointer;text-decoration:none}
 .btn.o{background:none;border:1px solid var(--ln);color:var(--tx)}
 .seg{display:inline-flex;background:var(--s2);border-radius:99px;padding:3px}
-select,input[type=date],input[type=text],input[type=number],input[type=email]{background:var(--s);border:1px solid var(--ln);border-radius:10px;padding:7px 10px}
+select, input[type=date], input[type=text], input[type=number], input[type=email]{background:var(--s);border:1px solid var(--ln);border-radius:10px;padding:7px 10px}
 .amount{width:110px}
 .slider{width:100%;accent-color:var(--y)}
 
@@ -59,6 +53,7 @@ main{padding:0 24px 40px;display:grid;gap:16px;max-width:1328px;margin:auto}
 .k{grid-template-columns:repeat(auto-fit,minmax(210px,1fr))}
 .m{grid-template-columns:repeat(auto-fit,minmax(min(100%,400px),1fr))}
 .m.a{grid-template-columns:2fr 1fr}
+
 @media(max-width:860px){.m.a{grid-template-columns:1fr}}
 
 /* ---------- Tarjetas ---------- */
@@ -66,7 +61,7 @@ main{padding:0 24px 40px;display:grid;gap:16px;max-width:1328px;margin:auto}
 .card p{color:var(--mu);font-size:13px}
 .card strong{display:block;font-size:30px;font-weight:800;letter-spacing:-.02em}
 .hero{background:var(--y);border-color:var(--y);color:var(--ink)}
-.hero p,.hero small{color:#4d4310}
+.hero p, .hero small{color:#4d4310}
 .hero strong{font-size:42px}
 .hd{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .hd h2{margin:0}
