@@ -4,8 +4,9 @@ const { validarBus, validarIdBus } = require("../util/validar");
 
 // CRUD de buses. Cada bus es un POS (punto de venta) de Mercado Pago:
 //   crear  -> POST   /v2/pos
-//   editar -> PATCH  /v2/pos/{pos_id}
-//   borrar -> DELETE /v2/pos/{pos_id}
+//   editar -> PATCH  /v2/pos/{pos_id}  (solo si cambia nombre o external_id)
+//   borrar -> baja lógica: NO llama a Mercado Pago. El POS (y el QR pegado en
+//             el bus) se conserva para poder reactivar el bus después.
 // Listar y listar_uno leen directo de Mongo (no hace falta llamar a Mercado Pago).
 //
 // Variables de entorno (.env):
@@ -121,9 +122,11 @@ const crear = async (req, res) => {
 
         if (duplicado) {
             const campo = duplicado.patente === datos.patente ? "patente" : "external_id";
+            // La baja es lógica, así que el bus sigue ocupando su patente y su external_id
+            const sugerencia = duplicado.activo === false ? " (está dado de baja: reactívalo en vez de crearlo)" : "";
             return res.status(409).json({
                 status: "error",
-                mensaje: `Ya existe un bus con esa ${campo}`
+                mensaje: `Ya existe un bus con esa ${campo}${sugerencia}`
             });
         }
 
@@ -226,9 +229,9 @@ const listar_uno = async (req, res) => {
     }
 }
 
-// Acepta cambios parciales: patente, nombre y/o external_id.
-// La patente es solo nuestra; nombre y external_id también se actualizan en
-// el POS de Mercado Pago.
+// Acepta cambios parciales: patente, nombre, external_id y/o activo.
+// La patente y activo son solo nuestros; nombre y external_id también se
+// actualizan en el POS de Mercado Pago. activo:true reactiva un bus dado de baja.
 const editar = async (req, res) => {
 
     const busId = req.params.id;
@@ -275,6 +278,13 @@ const editar = async (req, res) => {
         }
 
         let actualizacion = { ...cambios, fecha_actualizacion: new Date() };
+
+        // fecha_baja acompaña a activo: se marca al dar de baja y se limpia al reactivar
+        if (cambios.activo === false && bus.activo !== false) {
+            actualizacion.fecha_baja = new Date();
+        } else if (cambios.activo === true) {
+            actualizacion.fecha_baja = null;
+        }
 
         // Solo se llama a Mercado Pago si cambió algo que vive en el POS
         const cambiaPOS =
@@ -327,6 +337,8 @@ const editar = async (req, res) => {
     }
 }
 
+// Baja lógica: el bus queda con activo:false y su historial (pagos, patente,
+// external_id) se conserva. Para reactivarlo: PUT /buses/:id con { activo: true }.
 const borrar = async (req, res) => {
 
     // Recoger un id por la url y validarlo
@@ -350,30 +362,32 @@ const borrar = async (req, res) => {
             });
         }
 
-        if (!process.env.MP_ACCESS_TOKEN) {
-            return faltaConfiguracion(res);
+        if (bus.activo === false) {
+            return res.status(409).json({
+                status: "error",
+                mensaje: "El bus ya está dado de baja"
+            });
         }
 
-        // Primero se borra el POS en Mercado Pago. Si ya no existe allá (404),
-        // igual se borra el bus de nuestra base de datos.
-        const mp = await llamarMP("DELETE", `/${bus.mp_pos_id}`);
-
-        if (!mp.ok && mp.status !== 404) {
-            return errorMP(res, mp, "Mercado Pago no pudo borrar el POS del bus");
-        }
-
-        const resultado = await Bus.findByIdAndDelete(busId);
+        const ahora = new Date();
+        const resultado = await Bus.findByIdAndUpdate(busId, {
+            activo: false,
+            fecha_baja: ahora,
+            fecha_actualizacion: ahora
+        }, {
+            returnDocument: "after"
+        });
 
         return res.status(200).json({
             status: "éxito",
             bus: resultado,
-            mensaje: "Bus borrado"
+            mensaje: "Bus dado de baja"
         });
 
     } catch (error) {
         return res.status(500).json({
             status: "error",
-            mensaje: "Error al borrar el bus",
+            mensaje: "Error al dar de baja el bus",
             error: error.message
         });
     }

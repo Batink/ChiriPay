@@ -36,8 +36,8 @@ export default function BusTable({ tickets, buses, drivers, filters }) {
             return (
               <tr key={b.id}>
                 <td>{b.plate}</td>
-                <td>{driverName.get(b.driverId)}</td>
-                <td><span className={`st${b.active ? ' on' : ''}`}>{b.active ? 'En ruta' : 'Detenido'}</span></td>
+                <td>{driverName.get(b.driverId) ?? 'Sin chofer'}</td>
+                <td><span className={`st${b.active ? ' on' : ''}`}>{b.active ? 'En ruta' : 'De baja'}</span></td>
                 <td className="r">{num(s.count)}</td>
                 <td className="r">{money(s.amount)}</td>
               </tr>

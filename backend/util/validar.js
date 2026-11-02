@@ -15,8 +15,12 @@ const validator = require("validator");
 //  - external_id: es el "external_id" del POS en Mercado Pago: solo letras y
 //                 números. Máximo 40 caracteres.
 //
+//  - activo:      solo al editar (parcial): true reactiva un bus dado de baja y
+//                 false lo da de baja. Acepta booleano o "true"/"false".
+//
 // Con { parcial: true } (para editar) solo se validan los campos que vengan en
-// el body, pero tiene que venir al menos uno.
+// el body, pero tiene que venir al menos uno. El chofer del bus NO se valida
+// aquí a propósito: se asigna con sus propios endpoints (Fase 3).
 
 const validarBus = (parametros = {}, { parcial = false } = {}) => {
 
@@ -56,8 +60,19 @@ const validarBus = (parametros = {}, { parcial = false } = {}) => {
         }
     }
 
+    if (parcial && parametros.activo !== undefined) {
+        const activo = parametros.activo === true || parametros.activo === "true" ? true
+            : parametros.activo === false || parametros.activo === "false" ? false
+            : null;
+        if (activo === null) {
+            errores.push("activo debe ser true o false");
+        } else {
+            limpio.activo = activo;
+        }
+    }
+
     if (parcial && errores.length === 0 && Object.keys(limpio).length === 0) {
-        errores.push("No se envió ningún campo para actualizar (patente, nombre o external_id)");
+        errores.push("No se envió ningún campo para actualizar (patente, nombre, external_id o activo)");
     }
 
     if (errores.length > 0) {

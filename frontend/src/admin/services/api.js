@@ -11,7 +11,7 @@
  * Formas de datos que usa el panel (en inglés, internas):
  *   tipo     { id, name, price }
  *   chofer   { id, name, email, active }
- *   bus      { id, plate, driverId, active }
+ *   bus      { id, plate, name, externalId, driverId, active }
  *   boleto   { id, ts, busId, driverId, typeId, amount, driverAmount, companyAmount }
  */
 import * as mock from './mock.js';
@@ -25,7 +25,7 @@ try {
 const API = (ENV || 'http://localhost:3600/api').replace(/\/$/, '');
 
 /** true = usa tu backend; false = usa mock.js. */
-const LIVE = { tickets: true, types: false, drivers: false, buses: false, split: false };
+const LIVE = { tickets: true, types: false, drivers: false, buses: true, split: false };
 
 /* ---------- Utilidades HTTP ---------- */
 async function http(method, path, body) {
@@ -34,7 +34,18 @@ async function http(method, path, body) {
     headers: body ? { 'Content-Type': 'application/json' } : undefined,
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (!res.ok) throw new Error(`${method} ${path}: HTTP ${res.status}`);
+  if (!res.ok) {
+    // El backend explica el problema en "mensaje" (ej: patente duplicada): se conserva para mostrarlo.
+    let detail = '';
+    try {
+      detail = (await res.json()).mensaje ?? '';
+    } catch {
+      /* respuesta sin JSON */
+    }
+    const err = new Error(detail || `${method} ${path}: HTTP ${res.status}`);
+    err.fromServer = Boolean(detail);
+    throw err;
+  }
   return res.json();
 }
 // Tu backend responde { status, <clave>: ... }; aceptamos también arreglos u objetos directos.
@@ -45,11 +56,18 @@ const idOf = (doc) => doc.id ?? doc._id;
 /* ---------- Mappers: nombres del backend (español, Mongo) a los del panel ----------
  * Contrato que deben cumplir los endpoints nuevos:
  *   TipoPasaje { _id, nombre, precio }      Chofer { _id, nombre, correo, activo }
- *   Bus        { _id, patente, choferId, activo }      Reparto { porcentajeChofer }
+ *   Bus        { _id, patente, nombre, external_id, choferId, activo }      Reparto { porcentajeChofer }
  */
 const toType = (d) => ({ id: idOf(d), name: d.nombre, price: d.precio });
 const toDriver = (d) => ({ id: idOf(d), name: d.nombre, email: d.correo ?? '', active: d.activo !== false });
-const toBus = (d) => ({ id: idOf(d), plate: d.patente, driverId: d.choferId, active: d.activo !== false });
+const toBus = (d) => ({
+  id: idOf(d),
+  plate: d.patente,
+  name: d.nombre ?? '',
+  externalId: d.external_id ?? '',
+  driverId: d.choferId ?? null,
+  active: d.activo !== false, // activo:false = bus dado de baja
+});
 
 /* ---------- Configuración ---------- */
 export async function getTypes() {
@@ -62,7 +80,7 @@ export async function getDrivers() {
 }
 export async function getBuses() {
   if (!LIVE.buses) return mock.getBuses();
-  return list(await http('GET', '/buses'), 'buses').map(toBus); //           GET /api/buses
+  return list(await http('GET', '/buses'), 'resultado').map(toBus); //       GET /api/buses (incluye los dados de baja)
 }
 export async function getDriverPct() {
   if (!LIVE.split) return mock.getDriverPct();
@@ -163,8 +181,25 @@ export async function setDriverActive(id, active) {
   return toDriver(one(await http('PATCH', `/choferes/${id}`, { activo: active }), 'chofer'));
 }
 
-/** POST /api/buses con { patente, choferId }. */
-export async function createBus({ plate, driverId }) {
-  if (!LIVE.buses) return mock.createBus({ plate, driverId });
-  return toBus(one(await http('POST', '/buses', { patente: plate, choferId: driverId }), 'bus'));
+/** POST /api/buses con { patente, nombre, external_id }. El chofer se vincula aparte. */
+export async function createBus({ plate, name, externalId }) {
+  if (!LIVE.buses) return mock.createBus({ plate, name, externalId });
+  return toBus(one(await http('POST', '/buses', { patente: plate, nombre: name, external_id: externalId }), 'bus'));
+}
+
+/** PUT /api/buses/:id con los campos a cambiar (plate, name, externalId y/o active). */
+export async function updateBus(id, { plate, name, externalId, active }) {
+  if (!LIVE.buses) return mock.updateBus(id, { plate, name, externalId, active });
+  const body = {};
+  if (plate !== undefined) body.patente = plate;
+  if (name !== undefined) body.nombre = name;
+  if (externalId !== undefined) body.external_id = externalId;
+  if (active !== undefined) body.activo = active;
+  return toBus(one(await http('PUT', `/buses/${id}`, body), 'bus'));
+}
+
+/** DELETE /api/buses/:id: baja lógica. Devuelve el bus con active:false. */
+export async function removeBus(id) {
+  if (!LIVE.buses) return mock.removeBus(id);
+  return toBus(one(await http('DELETE', `/buses/${id}`), 'bus'));
 }

@@ -58,6 +58,28 @@ const verMiPOS = async (req, res) => {
         return res.status(500).json({ mensaje: "Error al llamar la API de MP" });
     }
 };
+
+const verPorPOS = async (req, res) => {
+    const { posId } = req.params;
+
+    try {
+        const respuesta = await fetch(`https://api.mercadopago.com/pos/${posId}`, {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${ACCESS_TOKEN}`,
+                "Content-Type": "application/json"
+            }
+        });
+ 
+        const data = await respuesta.json();
+ 
+        return res.status(200).json(data);
+ 
+    } catch (error) {
+        console.log(error);
+        return res.status(500).json({ mensaje: "Error al llamar la API de MP" });
+    }
+};
  
 const pasajeEscolar = async (req, res) => {
     try {
@@ -260,6 +282,7 @@ const obtenerOrdenActual = async (req, res) => {
  
 module.exports = {
     verMiPOS,
+    verPorPOS,
     pasajeEscolar,
     pasajeAdulto,
     guardarPago,

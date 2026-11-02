@@ -70,8 +70,9 @@ export function AdminProvider({ children }) {
       const value = await fn();
       notify(okMsg);
       return value;
-    } catch {
-      notify('No se pudo guardar. Revisa tu conexión e intenta de nuevo.');
+    } catch (e) {
+      // Si el backend explicó el problema (ej: patente duplicada) se muestra tal cual.
+      notify(e.fromServer ? e.message : 'No se pudo guardar. Revisa tu conexión e intenta de nuevo.');
       return null;
     }
   };
@@ -122,6 +123,28 @@ export function AdminProvider({ children }) {
         setConfig((c) => ({ ...c, buses: [...c.buses, bus] }));
         return true;
       }, 'Bus registrado'),
+
+    editBus: (id, payload) =>
+      run(async () => {
+        const bus = await api.updateBus(id, payload);
+        setConfig((c) => ({ ...c, buses: c.buses.map((b) => (b.id === id ? bus : b)) }));
+        return true;
+      }, 'Bus actualizado'),
+
+    // Baja lógica: el bus sigue en la lista (config.buses) con active:false, así los boletos antiguos conservan su patente.
+    removeBus: (id) =>
+      run(async () => {
+        const bus = await api.removeBus(id);
+        setConfig((c) => ({ ...c, buses: c.buses.map((b) => (b.id === id ? bus : b)) }));
+        return true;
+      }, 'Bus dado de baja'),
+
+    restoreBus: (id) =>
+      run(async () => {
+        const bus = await api.updateBus(id, { active: true });
+        setConfig((c) => ({ ...c, buses: c.buses.map((b) => (b.id === id ? bus : b)) }));
+        return true;
+      }, 'Bus reactivado'),
   };
 
   return <AdminContext.Provider value={value}>{children}</AdminContext.Provider>;

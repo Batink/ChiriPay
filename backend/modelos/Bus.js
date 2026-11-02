@@ -45,6 +45,24 @@ const BusSchema = new Schema({
         template_image: { type: String },
         qr_code: { type: String }
     },
+    // Chofer vigente del bus (null = bus sin chofer). Solo se modifica con los
+    // endpoints de vinculación (Fase 3), no con crear/editar: por eso validarBus
+    // no lo acepta. El historial de asignaciones se guardará aparte.
+    choferId: {
+        type: Schema.Types.ObjectId,
+        ref: "Chofer",
+        default: null
+    },
+    // Baja lógica: false = bus dado de baja. Los pagos históricos siguen
+    // apuntando al bus, y la patente / external_id quedan reservados.
+    activo: {
+        type: Boolean,
+        default: true
+    },
+    fecha_baja: {
+        type: Date,
+        default: null
+    },
     fecha: {
         type: Date,
         default: Date.now

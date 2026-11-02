@@ -23,6 +23,8 @@ const db = {
   buses: ['BXRT 11', 'BXRT 12', 'BXRT 13', 'BXRT 14', 'BXRT 15', 'BXRT 16'].map((plate, i) => ({
     id: i + 1,
     plate,
+    name: `Bus ${plate}`,
+    externalId: plate.replace(/\s/g, ''),
     driverId: i + 1,
     active: i !== 4,
   })),
@@ -113,8 +115,21 @@ export function setDriverActive(id, active) {
 }
 
 /** POST /buses */
-export function createBus({ plate, driverId }) {
-  const bus = { id: nextId++, plate, driverId, active: true };
+export function createBus({ plate, name, externalId }) {
+  const bus = { id: nextId++, plate, name, externalId, driverId: null, active: true };
   db.buses.push(bus);
   return latency(structuredClone(bus));
+}
+
+/** PUT /buses/:id: solo cambia los campos que vengan definidos. */
+export function updateBus(id, { plate, name, externalId, active }) {
+  const bus = db.buses.find((b) => b.id === id);
+  const patch = { plate, name, externalId, active };
+  for (const [key, value] of Object.entries(patch)) if (value !== undefined) bus[key] = value;
+  return latency(structuredClone(bus));
+}
+
+/** DELETE /buses/:id: baja lógica. */
+export function removeBus(id) {
+  return updateBus(id, { active: false });
 }

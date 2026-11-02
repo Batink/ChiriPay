@@ -5,19 +5,6 @@ import QRCode from 'react-qr-code';
 import { TablaBoletosComponent } from './TablaBoletosComponent';
 import { datosTemp } from '../contexto/QRContexto';
 
-
-const verMiPOS = async () => {
-    try {
-        const respuesta = await fetch("http://localhost:3600/api/ver-pos");
-        const data = await respuesta.json();
-
-        console.log("Respuesta:", data);
-
-
-    } catch (error) {
-        console.error("Error:", error);
-    }
-};
  
 
 const pasajeEscolar = async () => {
