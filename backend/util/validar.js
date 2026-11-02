@@ -1,5 +1,13 @@
 const validator = require("validator");
 
+// Acepta booleano o "true"/"false" (por si llega como form-urlencoded).
+// Devuelve null si el valor no es ninguno de los dos.
+const aBooleano = (valor) => {
+    if (valor === true || valor === "true") return true;
+    if (valor === false || valor === "false") return false;
+    return null;
+};
+
 // ---------------------------------------------------------------------------
 // BUSES
 // ---------------------------------------------------------------------------
@@ -61,9 +69,7 @@ const validarBus = (parametros = {}, { parcial = false } = {}) => {
     }
 
     if (parcial && parametros.activo !== undefined) {
-        const activo = parametros.activo === true || parametros.activo === "true" ? true
-            : parametros.activo === false || parametros.activo === "false" ? false
-            : null;
+        const activo = aBooleano(parametros.activo);
         if (activo === null) {
             errores.push("activo debe ser true o false");
         } else {
@@ -88,7 +94,141 @@ const validarIdBus = (id) => {
     }
 }
 
+// ---------------------------------------------------------------------------
+// CHOFERES
+// ---------------------------------------------------------------------------
+
+// Dígito verificador de un RUT chileno (módulo 11). Recibe solo el cuerpo numérico.
+const digitoVerificadorRut = (cuerpo) => {
+    let suma = 0;
+    let factor = 2;
+    for (let i = cuerpo.length - 1; i >= 0; i--) {
+        suma += Number(cuerpo[i]) * factor;
+        factor = factor === 7 ? 2 : factor + 1;
+    }
+    const resto = 11 - (suma % 11);
+    if (resto === 11) return "0";
+    if (resto === 10) return "K";
+    return String(resto);
+};
+
+// Acepta "12.345.678-5", "12345678-5", "123456785" o "1000005-k" y devuelve el
+// RUT normalizado ("12345678-5"), o null si el formato o el dígito verificador
+// no calzan. Es el formato en que se guarda y por el que se detectan duplicados.
+const normalizarRut = (valor) => {
+    const limpio = String(valor).replace(/[.\s-]/g, "").toUpperCase();
+    if (!/^\d{7,10}[\dK]$/.test(limpio)) return null;
+
+    const cuerpo = limpio.slice(0, -1).replace(/^0+/, "");
+    const dv = limpio.slice(-1);
+    if (!/^\d{7,8}$/.test(cuerpo) || digitoVerificadorRut(cuerpo) !== dv) return null;
+
+    return `${cuerpo}-${dv}`;
+};
+
+// Valida (y limpia) los datos de un chofer. Devuelve un objeto con los valores
+// ya normalizados, o lanza un Error con el detalle de lo que está mal.
+// Al registrarlo son obligatorios nombre, rut, correo y cuenta.
+//
+//  - nombre: 2 a 80 caracteres: letras (con tildes), espacios, apóstrofes, puntos y guiones.
+//  - rut:    RUT chileno con dígito verificador válido. Se guarda como "12345678-5".
+//  - correo: correo válido, se guarda en minúsculas.
+//  - cuenta: ID de la cuenta de Mercado Pago del chofer (para transferirle su parte).
+//            Solo dígitos, de 5 a 20. Si tus cuentas usan otro formato, cambia solo
+//            la expresión regular de abajo.
+//
+//  - activo: solo al editar (parcial). Es la disponibilidad (Activo / Inactivo).
+//  - baja:   solo al editar (parcial) y solo con false: reactiva a un chofer dado
+//            de baja. Para dar de baja se usa DELETE, que además lo desvincula de
+//            sus buses; por eso aquí no se acepta true.
+//
+// Con { parcial: true } (para editar) solo se validan los campos que vengan en
+// el body, pero tiene que venir al menos uno.
+
+const validarChofer = (parametros = {}, { parcial = false } = {}) => {
+
+    const errores = [];
+    const limpio = {};
+
+    // Acepta string o número (la cuenta de MP puede venir como número en el JSON)
+    const texto = (valor) =>
+        (typeof valor === "string" || typeof valor === "number") ? String(valor) : "";
+
+    if (!parcial || parametros.nombre !== undefined) {
+        const nombre = texto(parametros.nombre).trim().replace(/\s+/g, " ");
+        if (!validator.isLength(nombre, { min: 2, max: 80 }) ||
+            !/^[\p{L}\p{M}][\p{L}\p{M} '.-]*$/u.test(nombre)) {
+            errores.push("El nombre debe tener entre 2 y 80 caracteres: letras, espacios, apóstrofes, puntos y guiones");
+        } else {
+            limpio.nombre = nombre;
+        }
+    }
+
+    if (!parcial || parametros.rut !== undefined) {
+        const rut = normalizarRut(texto(parametros.rut));
+        if (!rut) {
+            errores.push("El RUT no es válido (ej: 12.345.678-5): revisa el número y el dígito verificador");
+        } else {
+            limpio.rut = rut;
+        }
+    }
+
+    if (!parcial || parametros.correo !== undefined) {
+        const correo = texto(parametros.correo).trim().toLowerCase();
+        if (!validator.isLength(correo, { max: 254 }) || !validator.isEmail(correo)) {
+            errores.push("El correo no es válido");
+        } else {
+            limpio.correo = correo;
+        }
+    }
+
+    if (!parcial || parametros.cuenta !== undefined) {
+        const cuenta = texto(parametros.cuenta).trim();
+        if (!/^\d{5,20}$/.test(cuenta)) {
+            errores.push("La cuenta de Mercado Pago debe tener entre 5 y 20 dígitos");
+        } else {
+            limpio.cuenta = cuenta;
+        }
+    }
+
+    if (parcial && parametros.activo !== undefined) {
+        const activo = aBooleano(parametros.activo);
+        if (activo === null) {
+            errores.push("activo debe ser true o false");
+        } else {
+            limpio.activo = activo;
+        }
+    }
+
+    if (parcial && parametros.baja !== undefined) {
+        if (aBooleano(parametros.baja) !== false) {
+            errores.push("Para dar de baja a un chofer usa DELETE /choferes/:id (baja solo acepta false, para reactivarlo)");
+        } else {
+            limpio.baja = false;
+        }
+    }
+
+    if (parcial && errores.length === 0 && Object.keys(limpio).length === 0) {
+        errores.push("No se envió ningún campo para actualizar (nombre, rut, correo, cuenta, activo o baja)");
+    }
+
+    if (errores.length > 0) {
+        throw new Error(errores.join(". "));
+    }
+
+    return limpio;
+}
+
+const validarIdChofer = (id) => {
+    if (!validator.isMongoId(String(id))) {
+        throw new Error("El ID del chofer tiene un formato incorrecto");
+    }
+}
+
 module.exports = {
     validarBus,
-    validarIdBus
+    validarIdBus,
+    validarChofer,
+    validarIdChofer,
+    normalizarRut
 }

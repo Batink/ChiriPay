@@ -89,12 +89,10 @@ app.use("/api", rutas_pago);
 const rutas_bus = require("./rutas/bus");
 app.use("/api", rutas_bus);
 
+const rutas_chofer = require("./rutas/chofer");
+app.use("/api", rutas_chofer);
+
 // Crear servidor y escuchar peticiones http
 app.listen(puerto, () => {
     console.log("Servidor corriendo en el puerto " + puerto);
 });
-
-
-
-
-

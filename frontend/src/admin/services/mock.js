@@ -18,7 +18,7 @@ const db = {
     { id: 3, name: 'Adulto Mayor', price: 1000 },
   ],
   drivers: ['Juan Pérez', 'María Soto', 'Luis Rojas', 'Ana Vera', 'Pedro Díaz', 'Sofía Mella'].map(
-    (name, i) => ({ id: i + 1, name, email: '', active: i !== 4 })
+    (name, i) => ({ id: i + 1, name, rut: '', email: '', account: '', active: i !== 4, removed: false })
   ),
   buses: ['BXRT 11', 'BXRT 12', 'BXRT 13', 'BXRT 14', 'BXRT 15', 'BXRT 16'].map((plate, i) => ({
     id: i + 1,
@@ -101,17 +101,38 @@ export function saveDriverPct(pct) {
 }
 
 /** POST /choferes */
-export function createDriver({ name, email }) {
-  const driver = { id: nextId++, name, email, active: true };
+export function createDriver({ name, rut, email, account }) {
+  const driver = { id: nextId++, name, rut, email, account, active: true, removed: false };
   db.drivers.push(driver);
   return latency(structuredClone(driver));
 }
 
-/** PATCH /choferes/:id */
-export function setDriverActive(id, active) {
+/** PUT /choferes/:id: solo cambia los campos que vengan definidos; removed:false reactiva (y deja activo). */
+export function updateDriver(id, { name, rut, email, account, active, removed }) {
   const driver = db.drivers.find((d) => d.id === id);
-  driver.active = active;
+  const reactivating = driver.removed && removed === false;
+  const patch = { name, rut, email, account, active };
+  for (const [key, value] of Object.entries(patch)) if (value !== undefined) driver[key] = value;
+  if (reactivating) {
+    driver.removed = false;
+    driver.active = active ?? true;
+  }
   return latency(structuredClone(driver));
+}
+
+/** DELETE /choferes/:id: baja lógica y desvincula al chofer de sus buses. */
+export function removeDriver(id) {
+  const driver = db.drivers.find((d) => d.id === id);
+  driver.removed = true;
+  driver.active = false;
+  let unlinked = 0;
+  for (const bus of db.buses) {
+    if (bus.driverId === id) {
+      bus.driverId = null;
+      unlinked += 1;
+    }
+  }
+  return latency({ driver: structuredClone(driver), unlinked });
 }
 
 /** POST /buses */

@@ -10,7 +10,7 @@
  *
  * Formas de datos que usa el panel (en inglés, internas):
  *   tipo     { id, name, price }
- *   chofer   { id, name, email, active }
+ *   chofer   { id, name, rut, email, account, active, removed }
  *   bus      { id, plate, name, externalId, driverId, active }
  *   boleto   { id, ts, busId, driverId, typeId, amount, driverAmount, companyAmount }
  */
@@ -25,7 +25,7 @@ try {
 const API = (ENV || 'http://localhost:3600/api').replace(/\/$/, '');
 
 /** true = usa tu backend; false = usa mock.js. */
-const LIVE = { tickets: true, types: false, drivers: false, buses: true, split: false };
+const LIVE = { tickets: true, types: false, drivers: true, buses: true, split: false };
 
 /* ---------- Utilidades HTTP ---------- */
 async function http(method, path, body) {
@@ -55,11 +55,19 @@ const idOf = (doc) => doc.id ?? doc._id;
 
 /* ---------- Mappers: nombres del backend (español, Mongo) a los del panel ----------
  * Contrato que deben cumplir los endpoints nuevos:
- *   TipoPasaje { _id, nombre, precio }      Chofer { _id, nombre, correo, activo }
+ *   TipoPasaje { _id, nombre, precio }      Chofer { _id, nombre, rut, correo, cuenta, activo, baja }
  *   Bus        { _id, patente, nombre, external_id, choferId, activo }      Reparto { porcentajeChofer }
  */
 const toType = (d) => ({ id: idOf(d), name: d.nombre, price: d.precio });
-const toDriver = (d) => ({ id: idOf(d), name: d.nombre, email: d.correo ?? '', active: d.activo !== false });
+const toDriver = (d) => ({
+  id: idOf(d),
+  name: d.nombre,
+  rut: d.rut ?? '',
+  email: d.correo ?? '',
+  account: d.cuenta ?? '', // ID de la cuenta de Mercado Pago, para transferirle al chofer
+  active: d.activo !== false,
+  removed: d.baja === true, // baja lógica; un chofer dado de baja siempre sale inactivo
+});
 const toBus = (d) => ({
   id: idOf(d),
   plate: d.patente,
@@ -76,7 +84,7 @@ export async function getTypes() {
 }
 export async function getDrivers() {
   if (!LIVE.drivers) return mock.getDrivers();
-  return list(await http('GET', '/choferes'), 'choferes').map(toDriver); //  GET /api/choferes
+  return list(await http('GET', '/choferes'), 'resultado').map(toDriver); //  GET /api/choferes (incluye los dados de baja)
 }
 export async function getBuses() {
   if (!LIVE.buses) return mock.getBuses();
@@ -169,16 +177,36 @@ export async function saveDriverPct(pct) {
   return pct;
 }
 
-/** POST /api/choferes con { nombre, correo }. */
-export async function createDriver({ name, email }) {
-  if (!LIVE.drivers) return mock.createDriver({ name, email });
-  return toDriver(one(await http('POST', '/choferes', { nombre: name, correo: email }), 'chofer'));
+/** POST /api/choferes con { nombre, rut, correo, cuenta }: los cuatro son obligatorios. */
+export async function createDriver({ name, rut, email, account }) {
+  if (!LIVE.drivers) return mock.createDriver({ name, rut, email, account });
+  return toDriver(one(await http('POST', '/choferes', { nombre: name, rut, correo: email, cuenta: account }), 'chofer'));
 }
 
-/** PATCH /api/choferes/:id con { activo }. */
-export async function setDriverActive(id, active) {
-  if (!LIVE.drivers) return mock.setDriverActive(id, active);
-  return toDriver(one(await http('PATCH', `/choferes/${id}`, { activo: active }), 'chofer'));
+/** PUT /api/choferes/:id con los campos a cambiar (name, rut, email, account, active y/o removed:false para reactivar). */
+export async function updateDriver(id, { name, rut, email, account, active, removed }) {
+  if (!LIVE.drivers) return mock.updateDriver(id, { name, rut, email, account, active, removed });
+  const body = {};
+  if (name !== undefined) body.nombre = name;
+  if (rut !== undefined) body.rut = rut;
+  if (email !== undefined) body.correo = email;
+  if (account !== undefined) body.cuenta = account;
+  if (active !== undefined) body.activo = active;
+  if (removed !== undefined) body.baja = removed;
+  return toDriver(one(await http('PUT', `/choferes/${id}`, body), 'chofer'));
+}
+
+/** Activa o desactiva a un chofer (disponibilidad). */
+export const setDriverActive = (id, active) => updateDriver(id, { active });
+
+/**
+ * DELETE /api/choferes/:id: baja lógica. El backend lo desvincula de sus buses y avisa cuántos eran.
+ * Devuelve { driver, unlinked }.
+ */
+export async function removeDriver(id) {
+  if (!LIVE.drivers) return mock.removeDriver(id);
+  const data = await http('DELETE', `/choferes/${id}`);
+  return { driver: toDriver(one(data, 'chofer')), unlinked: data.buses_desvinculados ?? 0 };
 }
 
 /** POST /api/buses con { patente, nombre, external_id }. El chofer se vincula aparte. */

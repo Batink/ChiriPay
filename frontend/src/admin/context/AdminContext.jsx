@@ -68,7 +68,7 @@ export function AdminProvider({ children }) {
   const run = async (fn, okMsg) => {
     try {
       const value = await fn();
-      notify(okMsg);
+      notify(typeof okMsg === 'function' ? okMsg(value) : okMsg); // okMsg puede depender del resultado
       return value;
     } catch (e) {
       // Si el backend explicó el problema (ej: patente duplicada) se muestra tal cual.
@@ -106,7 +106,7 @@ export function AdminProvider({ children }) {
     addDriver: (payload) =>
       run(async () => {
         const driver = await api.createDriver(payload);
-        setConfig((c) => ({ ...c, drivers: [...c.drivers, driver] }));
+        setConfig((c) => ({ ...c, drivers: [driver, ...c.drivers] })); // el backend lista primero a los más nuevos
         return true;
       }, 'Chofer registrado'),
 
@@ -117,10 +117,39 @@ export function AdminProvider({ children }) {
         return true;
       }, active ? 'Chofer activado' : 'Chofer desactivado'),
 
+    editDriver: (id, payload) =>
+      run(async () => {
+        const driver = await api.updateDriver(id, payload);
+        setConfig((c) => ({ ...c, drivers: c.drivers.map((d) => (d.id === id ? driver : d)) }));
+        return true;
+      }, 'Chofer actualizado'),
+
+    // Baja lógica. El backend lo desvincula de sus buses, así que también se limpian aquí.
+    removeDriver: (id) =>
+      run(async () => {
+        const { driver, unlinked } = await api.removeDriver(id);
+        setConfig((c) => ({
+          ...c,
+          drivers: c.drivers.map((d) => (d.id === id ? driver : d)),
+          buses: c.buses.map((b) => (String(b.driverId) === String(id) ? { ...b, driverId: null } : b)),
+        }));
+        return { unlinked };
+      }, ({ unlinked }) =>
+        unlinked > 0
+          ? `Chofer dado de baja y desvinculado de ${unlinked} ${unlinked === 1 ? 'bus' : 'buses'}`
+          : 'Chofer dado de baja'),
+
+    restoreDriver: (id) =>
+      run(async () => {
+        const driver = await api.updateDriver(id, { removed: false });
+        setConfig((c) => ({ ...c, drivers: c.drivers.map((d) => (d.id === id ? driver : d)) }));
+        return true;
+      }, 'Chofer reactivado'),
+
     addBus: (payload) =>
       run(async () => {
         const bus = await api.createBus(payload);
-        setConfig((c) => ({ ...c, buses: [...c.buses, bus] }));
+        setConfig((c) => ({ ...c, buses: [bus, ...c.buses] })); // el backend lista primero a los más nuevos
         return true;
       }, 'Bus registrado'),
 
