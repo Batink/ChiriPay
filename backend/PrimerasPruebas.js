@@ -1,7 +1,7 @@
 // import MercadoPago from 'mercadopago';
 
 // const client = new MercadoPago({
-//   accessToken: 'APP_USR-1492590052637591-050615-b26ff2d9d1b16ed2400aaf26152ab077-3382402657', // ← el que copiaste
+
 // });
 
 // const preference = await client.preferences.create({
