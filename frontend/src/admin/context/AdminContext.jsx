@@ -150,7 +150,7 @@ export function AdminProvider({ children }) {
       run(async () => {
         const bus = await api.createBus(payload);
         setConfig((c) => ({ ...c, buses: [bus, ...c.buses] })); // el backend lista primero a los más nuevos
-        return true;
+        return bus;
       }, 'Bus registrado'),
 
     editBus: (id, payload) =>
@@ -167,6 +167,25 @@ export function AdminProvider({ children }) {
         setConfig((c) => ({ ...c, buses: c.buses.map((b) => (b.id === id ? bus : b)) }));
         return true;
       }, 'Bus dado de baja'),
+
+    // Asignar reemplaza al chofer anterior del bus y deja activo al nuevo (el backend devuelve a ambos).
+    assignDriver: (busId, driverId) =>
+      run(async () => {
+        const { bus, driver } = await api.assignDriver(busId, driverId);
+        setConfig((c) => ({
+          ...c,
+          buses: c.buses.map((b) => (b.id === busId ? bus : b)),
+          drivers: c.drivers.map((d) => (d.id === driverId ? driver : d)),
+        }));
+        return true;
+      }, 'Chofer asignado'),
+
+    unassignDriver: (busId) =>
+      run(async () => {
+        const bus = await api.unassignDriver(busId);
+        setConfig((c) => ({ ...c, buses: c.buses.map((b) => (b.id === busId ? bus : b)) }));
+        return true;
+      }, 'Chofer desasignado'),
 
     restoreBus: (id) =>
       run(async () => {

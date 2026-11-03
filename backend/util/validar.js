@@ -225,9 +225,19 @@ const validarIdChofer = (id) => {
     }
 }
 
+// Cuerpo de PUT /buses/:id/chofer: solo el chofer a asignar.
+const validarAsignacion = (parametros = {}) => {
+    const choferId = String(parametros.choferId ?? "");
+    if (!validator.isMongoId(choferId)) {
+        throw new Error("choferId es obligatorio y debe ser el ID de un chofer");
+    }
+    return { choferId };
+}
+
 module.exports = {
     validarBus,
     validarIdBus,
+    validarAsignacion,
     validarChofer,
     validarIdChofer,
     normalizarRut

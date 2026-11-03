@@ -226,6 +226,22 @@ export async function updateBus(id, { plate, name, externalId, active }) {
   return toBus(one(await http('PUT', `/buses/${id}`, body), 'bus'));
 }
 
+/**
+ * PUT /api/buses/:id/chofer con { choferId }. Si el bus ya tenía otro chofer, lo reemplaza.
+ * Devuelve { bus, driver }: el chofer vuelve activo, porque asignarlo lo activa.
+ */
+export async function assignDriver(busId, driverId) {
+  if (!LIVE.buses) return mock.assignDriver(busId, driverId);
+  const data = await http('PUT', `/buses/${busId}/chofer`, { choferId: driverId });
+  return { bus: toBus(one(data, 'bus')), driver: toDriver(one(data, 'chofer')) };
+}
+
+/** DELETE /api/buses/:id/chofer: deja el bus sin chofer. Devuelve el bus. */
+export async function unassignDriver(busId) {
+  if (!LIVE.buses) return mock.unassignDriver(busId);
+  return toBus(one(await http('DELETE', `/buses/${busId}/chofer`), 'bus'));
+}
+
 /** DELETE /api/buses/:id: baja lógica. Devuelve el bus con active:false. */
 export async function removeBus(id) {
   if (!LIVE.buses) return mock.removeBus(id);

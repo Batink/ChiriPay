@@ -150,7 +150,25 @@ export function updateBus(id, { plate, name, externalId, active }) {
   return latency(structuredClone(bus));
 }
 
-/** DELETE /buses/:id: baja lógica. */
+/** DELETE /buses/:id: baja lógica; el bus queda sin chofer. */
 export function removeBus(id) {
+  const bus = db.buses.find((b) => b.id === id);
+  bus.driverId = null;
   return updateBus(id, { active: false });
+}
+
+/** PUT /buses/:id/chofer: reemplaza al chofer anterior y deja activo al nuevo. */
+export function assignDriver(busId, driverId) {
+  const bus = db.buses.find((b) => b.id === busId);
+  const driver = db.drivers.find((d) => d.id === driverId);
+  bus.driverId = driverId;
+  driver.active = true;
+  return latency({ bus: structuredClone(bus), driver: structuredClone(driver) });
+}
+
+/** DELETE /buses/:id/chofer */
+export function unassignDriver(busId) {
+  const bus = db.buses.find((b) => b.id === busId);
+  bus.driverId = null;
+  return latency(structuredClone(bus));
 }
