@@ -1,12 +1,15 @@
 const { randomUUID } = require("crypto");
 const Bus = require("../modelos/Bus");
 const { validarBus, validarIdBus } = require("../util/validar");
+const { cerrarDeBus } = require("../util/asignaciones");
 
 // CRUD de buses. Cada bus es un POS (punto de venta) de Mercado Pago:
 //   crear  -> POST   /v2/pos
 //   editar -> PATCH  /v2/pos/{pos_id}  (solo si cambia nombre o external_id)
 //   borrar -> baja lógica: NO llama a Mercado Pago. El POS (y el QR pegado en
-//             el bus) se conserva para poder reactivar el bus después.
+//             el bus) se conserva para poder reactivar el bus después. Al darlo
+//             de baja (por DELETE o con PUT activo:false) también se libera a su
+//             chofer: la asignación se cierra en el historial.
 // Listar y listar_uno leen directo de Mongo (no hace falta llamar a Mercado Pago).
 //
 // Variables de entorno (.env):
@@ -285,6 +288,10 @@ const editar = async (req, res) => {
         } else if (cambios.activo === true) {
             actualizacion.fecha_baja = null;
         }
+        const daDeBaja = cambios.activo === false && bus.activo !== false;
+        if (daDeBaja) {
+            actualizacion.choferId = null;
+        }
 
         // Solo se llama a Mercado Pago si cambió algo que vive en el POS
         const cambiaPOS =
@@ -315,6 +322,11 @@ const editar = async (req, res) => {
                     external_id: cambios.external_id ?? bus.external_id
                 })
             };
+        }
+
+        // Recién ahora (ya pasó Mercado Pago) se cierra la asignación vigente
+        if (daDeBaja) {
+            await cerrarDeBus(bus._id, actualizacion.fecha_baja);
         }
 
         const resultado = await Bus.findByIdAndUpdate(busId, actualizacion, {
@@ -370,9 +382,15 @@ const borrar = async (req, res) => {
         }
 
         const ahora = new Date();
+
+        // Se libera al chofer: primero el historial y luego el bus, para que
+        // repetir el DELETE no deje nunca un bus de baja con chofer asignado.
+        await cerrarDeBus(bus._id, ahora);
+
         const resultado = await Bus.findByIdAndUpdate(busId, {
             activo: false,
             fecha_baja: ahora,
+            choferId: null,
             fecha_actualizacion: ahora
         }, {
             returnDocument: "after"

@@ -1,6 +1,7 @@
 const Chofer = require("../modelos/Chofer");
 const Bus = require("../modelos/Bus");
 const { validarChofer, validarIdChofer } = require("../util/validar");
+const { cerrarDeChofer } = require("../util/asignaciones");
 
 // CRUD de choferes. Todo vive en Mongo (no hay integración con Mercado Pago:
 // la cuenta del chofer solo se guarda para transferirle en el futuro).
@@ -236,10 +237,10 @@ const borrar = async (req, res) => {
 
         const ahora = new Date();
 
-        // Primero se desvincula y después se marca la baja: si algo falla a la
-        // mitad, repetir el DELETE lo termina bien y nunca queda un chofer dado
-        // de baja asignado a un bus.
-        // TODO Fase 3: aquí también se cerrará la asignación vigente en el historial.
+        // Primero se desvincula (historial y buses) y después se marca la baja: si
+        // algo falla a la mitad, repetir el DELETE lo termina bien y nunca queda
+        // un chofer dado de baja asignado a un bus.
+        await cerrarDeChofer(chofer._id, ahora);
         const desvinculacion = await Bus.updateMany(
             { choferId: chofer._id },
             { choferId: null, fecha_actualizacion: ahora }

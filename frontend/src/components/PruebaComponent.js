@@ -66,6 +66,8 @@ export const PruebaComponent = () => {
 
     return (
         <div>
+           
+
             <h1>Prototipo 1 ChiriPay</h1>
             {/* <button onClick={verMiPOS}>Ver mi POS</button><br/> */}
             <button onClick={handlePasajeEscolar}>Crear Pasaje Escolar</button>
