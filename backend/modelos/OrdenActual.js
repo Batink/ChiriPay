@@ -1,10 +1,16 @@
 const { Schema, model } = require("mongoose");
 
-// Guarda un único documento: la última orden creada (pasaje escolar o adulto).
-// La pantalla del QR (/qr) consulta este documento en vez de depender de la
-// navegación del navegador, así funciona aunque esté abierta en otra ventana
-// o en otro dispositivo distinto al que generó el pasaje.
+// Guarda un documento POR BUS: la última orden creada en ese bus (pasaje escolar
+// o adulto). La pantalla del QR de cada bus (/qr?bus=PATENTE) consulta su
+// documento en vez de depender de la navegación del navegador, así funciona
+// aunque esté abierta en otra ventana o en otro dispositivo.
 const OrdenActualSchema = Schema({
+    busId: {
+        type: Schema.Types.ObjectId,
+        ref: "Bus",
+        unique: true,
+        sparse: true // el documento único de antes de existir los buses no tiene busId
+    },
     externalReference: {
         type: String
     },

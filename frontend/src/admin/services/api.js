@@ -1,9 +1,8 @@
 /*
  * Capa de datos de ChiriPay Admin conectada al backend Express (puerto 3600, prefijo /api).
  *
- * Hoy tu backend solo tiene pagos (GET /api/pagos, el webhook de MercadoPago ya guardado en Mongo).
- * Todo lo demás que necesita el panel (tipos de pasaje, choferes, buses, reparto) todavía no existe,
- * así que esas partes siguen saliendo de mock.js. Cuando crees un endpoint, pasa su flag a true.
+ * El backend ya tiene pagos (GET /api/pagos), choferes, buses (con su chofer asignado) y el reparto.
+ * Lo único que todavía sale de mock.js son los tipos de pasaje (flag types). Cuando crees ese endpoint, pasa su flag a true.
  *
  * URL del backend: variable REACT_APP_API_URL (archivo .env en frontend/, reinicia `npm start` al cambiarla).
  * Si no existe, usa http://localhost:3600/api. Tu backend ya tiene cors() abierto, no hace falta proxy.
@@ -25,7 +24,7 @@ try {
 const API = (ENV || 'http://localhost:3600/api').replace(/\/$/, '');
 
 /** true = usa tu backend; false = usa mock.js. */
-const LIVE = { tickets: true, types: false, drivers: true, buses: true, split: false };
+const LIVE = { tickets: true, types: false, drivers: true, buses: true, split: true };
 
 /* ---------- Utilidades HTTP ---------- */
 async function http(method, path, body) {
@@ -101,8 +100,8 @@ export async function getDriverPct() {
    Los nombres deben coincidir con los de los tipos de pasaje (sin importar mayúsculas). */
 const TYPE_BY_PREFIX = { PE: 'escolar', PA: 'regular' };
 
-/* Bus según el resto de external_reference: "PE-BXRT11" => bus con patente BXRT 11.
-   Para que cada venta quede asociada a un bus, hay que generar la referencia así al crear la orden. */
+/* Solo para pagos ANTERIORES a que el backend guardara el bus en cada venta: bus según el resto de
+   external_reference ("PE-BXRT11" => patente BXRT 11). Los pagos nuevos ya traen busId y choferId. */
 const normPlate = (s) => String(s ?? '').replace(/[\s-]/g, '').toUpperCase();
 
 // Fecha del pago: date_created del webhook; si falta, la fecha embebida en el _id de Mongo.
@@ -129,21 +128,23 @@ function toTickets(pagos, { types, buses, pct }) {
     .map((p) => {
       const [prefix, ...rest] = String(p.data.external_reference ?? '').split('-');
       const type = typeByName.get(TYPE_BY_PREFIX[prefix.toUpperCase()]);
-      const bus = busByPlate.get(normPlate(rest.join('')));
       const pay = p.data.transactions?.payments?.[0];
       const amount = Number(p.data.total_paid_amount ?? pay?.paid_amount ?? pay?.amount ?? 0);
-      // OJO: el reparto se calcula con el porcentaje vigente. Para respetar HU-12 (monto fijo al momento
-      // de la venta), guarda driverAmount y companyAmount en el Pago al registrarlo y léelos aquí.
-      const driverAmount = Math.round((amount * pct) / 100);
+      // HU-12: los pagos nuevos traen el bus, el chofer y el reparto fijados al crear el QR, así que cambiar
+      // el chofer del bus o el porcentaje no altera ventas pasadas. Los anteriores no los tienen: para esos
+      // se deduce el bus por la referencia y se reparte con el porcentaje vigente (como antes).
+      const stamped = p.busId != null;
+      const legacyBus = stamped ? undefined : busByPlate.get(normPlate(rest.join('')));
+      const driverAmount = p.monto_chofer ?? Math.round((amount * pct) / 100);
       return {
         id: p.data.id,
         ts: createdAt(p),
-        busId: bus?.id ?? null,
-        driverId: bus?.driverId ?? null,
+        busId: stamped ? String(p.busId) : (legacyBus?.id ?? null),
+        driverId: stamped ? (p.choferId != null ? String(p.choferId) : null) : (legacyBus?.driverId ?? null),
         typeId: type?.id ?? null,
         amount,
         driverAmount,
-        companyAmount: amount - driverAmount,
+        companyAmount: p.monto_empresa ?? amount - driverAmount,
       };
     })
     .sort((a, b) => a.ts - b.ts);

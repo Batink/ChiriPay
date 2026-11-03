@@ -1,6 +1,26 @@
 const { Schema, model } = require("mongoose");
 
 const PagoSchema = Schema({
+    // Atribución y reparto de la venta. NO vienen de Mercado Pago: los pone
+    // guardarPago a partir de la orden creada con el QR (modelos/Orden.js).
+    // Los pagos anteriores a esta versión no los tienen.
+    busId: {
+        type: Schema.Types.ObjectId,
+        ref: "Bus"
+    },
+    choferId: {
+        type: Schema.Types.ObjectId,
+        ref: "Chofer"
+    },
+    porcentaje_chofer: {
+        type: Number
+    },
+    monto_chofer: {
+        type: Number
+    },
+    monto_empresa: {
+        type: Number
+    },
     action: {
     type: String
     },

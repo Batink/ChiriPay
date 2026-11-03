@@ -1,17 +1,19 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 
 const INTERVALO_POLLING_MS = 2500;
 
-const obtenerOrdenActual = async () => {
+// Devuelve la última orden del bus y, si el backend rechazó la consulta (bus
+// desconocido o dado de baja), el motivo para mostrarlo en pantalla.
+const obtenerOrdenActual = async (patente) => {
     try {
-        const respuesta = await fetch(`http://localhost:3600/api/orden-actual`);
+        const respuesta = await fetch(`http://localhost:3600/api/orden-actual?patente=${encodeURIComponent(patente)}`);
         const data = await respuesta.json();
-        return data.orden || null;
+        return { orden: data.orden || null, aviso: data.status === "error" ? data.mensaje : "" };
     } catch (error) {
         console.error("Error consultando la orden actual:", error);
-        return null;
+        return { orden: null, aviso: "" };
     }
 };
 
@@ -29,16 +31,24 @@ const consultarEstado = async (referencia) => {
 export const QRComponent = () => {
     const navigate = useNavigate();
 
+    // Cada bus tiene su propia pantalla: /qr?bus=AB1234
+    const [params] = useSearchParams();
+    const patente = params.get("bus");
+
     // No usamos el state de la navegación: esta pantalla puede estar abierta
     // en otra ventana o en otro dispositivo distinto al que generó el
     // pasaje, así que todo lo que muestra viene siempre del backend.
     const [orden, setOrden] = useState(null);
     const [estado, setEstado] = useState("pendiente");
+    const [aviso, setAviso] = useState("");
     const referenciaMostrada = useRef(null);
 
     useEffect(() => {
+        if (!patente) return;
+
         const revisar = async () => {
-            const ordenActual = await obtenerOrdenActual();
+            const { orden: ordenActual, aviso } = await obtenerOrdenActual(patente);
+            setAviso(aviso);
 
             // ¿Cambió la orden que hay que mostrar (se generó un pasaje nuevo,
             // en esta ventana o en cualquier otra)? Si es así, arrancamos de cero.
@@ -62,13 +72,23 @@ export const QRComponent = () => {
         const intervalo = setInterval(revisar, INTERVALO_POLLING_MS);
 
         return () => clearInterval(intervalo);
-    }, []);
+    }, [patente]);
+
+    if (!patente) {
+        return (
+            <div>
+                <h1>Falta indicar el bus</h1>
+                <p>Abre esta página con la patente del bus en la dirección, por ejemplo: /qr?bus=AB1234</p>
+            </div>
+        );
+    }
 
     if (!orden) {
         return (
             <div>
                 <h1>Aún no hay ningún pasaje generado</h1>
-                <p>En cuanto se genere un pasaje desde la página principal, el QR va a aparecer acá solo.</p>
+                {aviso && <p>{aviso}</p>}
+                <p>En cuanto se genere un pasaje en este bus, el QR va a aparecer acá solo.</p>
                 {/* <button onClick={() => navigate("/")}>Crear pasaje</button> */}
             </div>
         );

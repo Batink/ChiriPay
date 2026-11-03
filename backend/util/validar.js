@@ -12,6 +12,13 @@ const aBooleano = (valor) => {
 // BUSES
 // ---------------------------------------------------------------------------
 
+// Patente normalizada ("fl-xt 12" -> "FLXT12"), o null si no tiene 6 caracteres
+// alfanuméricos. La usan validarBus y los dispositivos que identifican su bus por patente.
+const normalizarPatente = (valor) => {
+    const patente = String(valor ?? "").replace(/[\s-]/g, "").toUpperCase();
+    return /^[A-Z0-9]{6}$/.test(patente) ? patente : null;
+};
+
 // Valida (y limpia) los datos de un bus. Devuelve un objeto con los valores ya
 // normalizados, o lanza un Error con el detalle de lo que está mal.
 //
@@ -40,8 +47,8 @@ const validarBus = (parametros = {}, { parcial = false } = {}) => {
         (typeof valor === "string" || typeof valor === "number") ? String(valor) : "";
 
     if (!parcial || parametros.patente !== undefined) {
-        const patente = texto(parametros.patente).replace(/[\s-]/g, "").toUpperCase();
-        if (!/^[A-Z0-9]{6}$/.test(patente)) {
+        const patente = normalizarPatente(texto(parametros.patente));
+        if (!patente) {
             errores.push("La patente debe tener 6 caracteres alfanuméricos (ej: FLXT12)");
         } else {
             limpio.patente = patente;
@@ -225,6 +232,16 @@ const validarIdChofer = (id) => {
     }
 }
 
+// Cuerpo de PUT /reparto: porcentaje entero (0 a 100) que se queda el chofer.
+const validarReparto = (parametros = {}) => {
+    const valor = parametros.porcentajeChofer;
+    const numero = typeof valor === "string" && valor.trim() !== "" ? Number(valor) : valor;
+    if (typeof numero !== "number" || !Number.isInteger(numero) || numero < 0 || numero > 100) {
+        throw new Error("porcentajeChofer debe ser un número entero entre 0 y 100");
+    }
+    return { porcentajeChofer: numero };
+}
+
 // Cuerpo de PUT /buses/:id/chofer: solo el chofer a asignar.
 const validarAsignacion = (parametros = {}) => {
     const choferId = String(parametros.choferId ?? "");
@@ -237,7 +254,9 @@ const validarAsignacion = (parametros = {}) => {
 module.exports = {
     validarBus,
     validarIdBus,
+    normalizarPatente,
     validarAsignacion,
+    validarReparto,
     validarChofer,
     validarIdChofer,
     normalizarRut

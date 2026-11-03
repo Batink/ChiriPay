@@ -1,14 +1,17 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { TablaBoletosComponent } from './TablaBoletosComponent';
 
-const crearPasaje = async (endpoint) => {
+// Cada bus tiene su propio dispositivo: el backend necesita saber en qué bus se
+// vende el pasaje para usar su POS y repartir las ganancias con su chofer.
+const crearPasaje = async (endpoint, patente) => {
     try {
         const respuesta = await fetch(`http://localhost:3600/api/${endpoint}`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json"
-            }
+            },
+            body: JSON.stringify({ patente })
         });
         const data = await respuesta.json();
         console.log("Respuesta:", data);
@@ -23,11 +26,15 @@ export const SeleccionPasajeComponent = () => {
 
     const navigate = useNavigate();
 
+    // El bus se indica en la dirección: /?bus=AB1234 (el panel de administración tiene el enlace de cada bus)
+    const [params] = useSearchParams();
+    const patente = params.get("bus");
+
     const irAQR = async (endpoint, titulo) => {
-        const data = await crearPasaje(endpoint);
+        const data = await crearPasaje(endpoint, patente);
 
         if (!data || !data.type_response) {
-            alert("No se pudo generar el QR, intenta nuevamente");
+            alert((data && data.mensaje) || "No se pudo generar el QR, intenta nuevamente");
             return;
         }
 
@@ -39,9 +46,19 @@ export const SeleccionPasajeComponent = () => {
         // navigate("/qr");
     };
 
+    if (!patente) {
+        return (
+            <div>
+                <h1>Falta indicar el bus</h1>
+                <p>Abre esta página con la patente del bus en la dirección, por ejemplo: /?bus=AB1234</p>
+            </div>
+        );
+    }
+
     return (
         <div>
             <h1>Prototipo 1 ChiriPay</h1>
+            <p>Bus {patente}</p>
             <button onClick={() => irAQR("pasaje-escolar", "Pasaje Escolar")}>
                 Crear Pasaje Escolar
             </button>

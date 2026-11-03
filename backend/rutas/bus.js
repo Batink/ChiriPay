@@ -14,4 +14,4 @@ router.get("/buses/:id/asignaciones", AsignacionControlador.historial);
 router.put("/buses/:id/chofer", AsignacionControlador.asignar);
 router.delete("/buses/:id/chofer", AsignacionControlador.desasignar);
 
-module.exports = router;    
+module.exports = router;

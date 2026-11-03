@@ -84,6 +84,9 @@ export default function BusesCard() {
           <span className={`st${b.active ? ' on' : ''}`}>{b.active ? 'Activo' : 'De baja'}</span>
           {b.active ? (
             <>
+              {/* Cada bus tiene su dispositivo (genera los QR) y su pantalla (los muestra); se identifican por la patente */}
+              <small><a href={`/?bus=${encodeURIComponent(b.plate)}`} target="_blank" rel="noreferrer">Dispositivo</a></small>
+              <small><a href={`/qr?bus=${encodeURIComponent(b.plate)}`} target="_blank" rel="noreferrer">Pantalla QR</a></small>
               <button className="btn o" onClick={() => startEdit(b)}>Editar</button>
               <button className="btn o" onClick={() => remove(b)}>Dar de baja</button>
             </>

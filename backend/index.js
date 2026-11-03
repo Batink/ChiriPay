@@ -92,6 +92,9 @@ app.use("/api", rutas_bus);
 const rutas_chofer = require("./rutas/chofer");
 app.use("/api", rutas_chofer);
 
+const rutas_reparto = require("./rutas/reparto");
+app.use("/api", rutas_reparto);
+
 // Crear servidor y escuchar peticiones http
 app.listen(puerto, () => {
     console.log("Servidor corriendo en el puerto " + puerto);
