@@ -1,9 +1,12 @@
 import React from 'react'
 import { useState, useEffect } from 'react';
-
+import { money, fmtDate, fmtTime } from '../admin/utils';
 
 const INTERVALO_REFRESCO_MS = 5000;
+const FILAS_VISIBLES = 20; // el backend entrega los pagos del más nuevo al más antiguo
 
+// Estados de las órdenes de Mercado Pago que se conocen; cualquier otro se muestra tal cual.
+const ESTADOS = { processed: "Pagado", created: "Creado", expired: "Expirado" };
 
 export const TablaBoletosComponent = () => {
 
@@ -13,8 +16,7 @@ export const TablaBoletosComponent = () => {
         try {
             const respuesta = await fetch(`http://localhost:3600/api/pagos`);
             const data = await respuesta.json();
-            setPasajes(data.pagos);
-            console.log(pasajes);
+            setPasajes(Array.isArray(data.pagos) ? data.pagos : []);
         } catch (error) {
             console.error("Hubo un error al llamar la API de prueba:", error);
             // alert("Error al conectar con la API de prueba.");
@@ -28,68 +30,49 @@ export const TablaBoletosComponent = () => {
         return () => clearInterval(intervalo);
     }, []); //Array vacío = se ejecuta solo una vez
 
-    const crearTabla = (col = 1) => {
-        
-        let filas = pasajes.length; //si quiero limitarlo dejarlo como int
-        // console.log(pasajes);
-
-        return (
-
-            <tbody>
-                
-
-                {Array.from({ length: filas }).map((_, filaIndex) => {
-
-                    if (!pasajes[filaIndex]) {
-                        return (
-                            <tr key={filaIndex}>
-                                <td colSpan="4">Cargando...</td>
-                            </tr>
-                        );
-                    }
-
-                    const pasaje = pasajes[filaIndex]; // Para evitar repetir pasajes[filaIndex]
-
-                    
-                    return (
-                        <tr key={filaIndex}>
-                            <td>{pasaje.date_created.slice(0, 10)}</td>
-                            <td>{pasaje.date_created.slice(11, 19)}</td>
-                            <td >{pasaje.data.id}</td>
-                            <td >{pasaje.data.status}</td>
-                            <td >{pasaje.data.total_paid_amount}</td>
-                        </tr>
-                    );
-
-                })}
-
-            </tbody>
-
-
-        );
-    };
+    const recientes = pasajes.slice(0, FILAS_VISIBLES);
 
     return (
-        <div>TablaBoletosComponent
-            
-            <center>
-                <table border="1">
-                    <thead className="oscbg">
-                        <tr> 
-                            <th> Día </th>
-                            <th> Hora </th>
-                            <th> ID </th>
-                            <th> Status </th>
-                            <th> Monto </th>
-                        </tr>
-                    </thead>
+        <section className="card">
+            <div className="hd">
+                <h2>Pagos recientes</h2>
+                <small>Se actualiza solo cada {INTERVALO_REFRESCO_MS / 1000} segundos</small>
+            </div>
 
-                    
-                        {crearTabla(3)}
+            {recientes.length === 0 ? (
+                <p className="empty">Todavía no hay pagos.</p>
+            ) : (
+                <div className="tw">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Día</th>
+                                <th>Hora</th>
+                                <th className="pub-col-id">ID</th>
+                                <th>Estado</th>
+                                <th className="r">Monto</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {recientes.map((pasaje, indice) => {
+                                const ts = Date.parse(pasaje.date_created);
+                                const estado = pasaje.data.status;
+                                const monto = Number(pasaje.data.total_paid_amount);
 
-                    
-                </table>
-            </center>
-        </div>
+                                return (
+                                    <tr key={pasaje._id || indice}>
+                                        <td>{Number.isNaN(ts) ? "—" : fmtDate(ts)}</td>
+                                        <td>{Number.isNaN(ts) ? "—" : fmtTime(ts)}</td>
+                                        <td className="pub-col-id">{pasaje.data.id}</td>
+                                        <td><span className={`st${estado === "processed" ? " on" : ""}`}>{ESTADOS[estado] || estado}</span></td>
+                                        <td className="r">{Number.isFinite(monto) ? money(monto) : "—"}</td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </div>
+            )}
+        </section>
     )
 }

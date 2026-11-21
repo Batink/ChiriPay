@@ -1,6 +1,7 @@
-import React from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { TablaBoletosComponent } from './TablaBoletosComponent';
+import { MarcoPublico } from './MarcoPublico';
 
 // Cada bus tiene su propio dispositivo: el backend necesita saber en qué bus se
 // vende el pasaje para usar su POS y repartir las ganancias con su chofer.
@@ -24,50 +25,73 @@ const crearPasaje = async (endpoint, patente) => {
 
 export const SeleccionPasajeComponent = () => {
 
-    const navigate = useNavigate();
-
     // El bus se indica en la dirección: /?bus=AB1234 (el panel de administración tiene el enlace de cada bus)
     const [params] = useSearchParams();
     const patente = params.get("bus");
 
+    // Endpoint que se está generando ahora (null = ninguno): mientras tanto los botones
+    // quedan bloqueados, para que un doble toque no cree dos órdenes.
+    const [generando, setGenerando] = useState(null);
+    const [aviso, setAviso] = useState(null);
+    const temporizador = useRef(null);
+
+    const mostrarAviso = (texto, tipo = "info") => {
+        clearTimeout(temporizador.current);
+        setAviso({ texto, tipo });
+        temporizador.current = setTimeout(() => setAviso(null), tipo === "error" ? 6000 : 4000);
+    };
+
+    useEffect(() => () => clearTimeout(temporizador.current), []);
+
     const irAQR = async (endpoint, titulo) => {
+        if (generando) return;
+
+        setGenerando(endpoint);
         const data = await crearPasaje(endpoint, patente);
+        setGenerando(null);
 
         if (!data || !data.type_response) {
-            alert((data && data.mensaje) || "No se pudo generar el QR, intenta nuevamente");
+            mostrarAviso((data && data.mensaje) || "No se pudo generar el QR, intenta nuevamente", "error");
             return;
         }
 
         // La página del QR consulta el backend por su cuenta (polling a
         // /api/orden-actual), así que si ya está abierta en otra ventana o
-        // dispositivo se va a actualizar sola. Este navigate es solo para
-        // comodidad si estás probando todo en la misma pestaña.
-        
-        // navigate("/qr");
+        // dispositivo se va a actualizar sola: aquí solo se avisa que ya salió.
+        mostrarAviso(`${titulo} generado: el QR ya está en la pantalla del bus`);
     };
 
     if (!patente) {
         return (
-            <div>
-                <h1>Falta indicar el bus</h1>
-                <p>Abre esta página con la patente del bus en la dirección, por ejemplo: /?bus=AB1234</p>
-            </div>
+            <MarcoPublico subtitulo="Dispositivo del bus">
+                <section className="card">
+                    <div className="hd"><h1 className="pub-h1">Falta indicar el bus</h1></div>
+                    <p className="pub-nota">Abre esta página con la patente del bus en la dirección, por ejemplo: <code>/?bus=AB1234</code></p>
+                </section>
+            </MarcoPublico>
         );
     }
 
     return (
-        <div>
-            <h1>Prototipo 1 ChiriPay</h1>
-            <p>Bus {patente}</p>
-            <button onClick={() => irAQR("pasaje-escolar", "Pasaje Escolar")}>
-                Crear Pasaje Escolar
-            </button>
-            <button onClick={() => irAQR("pasaje-adulto", "Pasaje Adulto")}>
-                Crear Pasaje Adulto
-            </button>
-
+        <MarcoPublico subtitulo="Dispositivo del bus" patente={patente} aviso={aviso}>
+            <section className="card">
+                <div className="hd">
+                    <h1 className="pub-h1">Generar pasaje</h1>
+                    <small>El QR aparece en la pantalla del bus</small>
+                </div>
+                <div className="pub-tiles">
+                    <button className="btn pub-tile" disabled={generando !== null} aria-busy={generando === "pasaje-escolar"}
+                        onClick={() => irAQR("pasaje-escolar", "Pasaje Escolar")}>
+                        {generando === "pasaje-escolar" ? "Generando…" : "Crear Pasaje Escolar"}
+                    </button>
+                    <button className="btn pub-tile" disabled={generando !== null} aria-busy={generando === "pasaje-adulto"}
+                        onClick={() => irAQR("pasaje-adulto", "Pasaje Adulto")}>
+                        {generando === "pasaje-adulto" ? "Generando…" : "Crear Pasaje Adulto"}
+                    </button>
+                </div>
+            </section>
 
             <TablaBoletosComponent />
-        </div>
+        </MarcoPublico>
     );
 };

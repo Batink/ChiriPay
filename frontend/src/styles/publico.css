@@ -1,0 +1,59 @@
+/* ChiriPay: pantallas públicas (dispositivo del bus y pantalla del QR).
+   No definen una identidad propia: usan los colores, la tipografía y los componentes del panel (admin.css).
+   Por eso su contenedor lleva .cp-admin (el sistema de diseño: tokens, tema, botones, tarjetas, tablas) y
+   .cp-public (lo propio de estas pantallas). Si cambia la marca en admin.css, aquí cambia sola. */
+
+.cp-public{text-align:left} /* App.css centra todo el texto de la app: aquí se decide pantalla por pantalla */
+/* Mientras se genera un pasaje se apagan los botones, salvo el que se pulsó (sigue en amarillo pleno) */
+.cp-public .btn:disabled{opacity:.5;cursor:progress}
+.cp-public .btn[aria-busy="true"]{opacity:1}
+
+/* ---------- Cabecera ---------- */
+.cp-public .pub-bus{font-size:15px;font-weight:600;padding:4px 14px}
+
+/* ---------- Contenido ----------
+   .cp-admin main ya da la rejilla con separación y los márgenes laterales; aquí solo el ancho y el aire de arriba. */
+.cp-public main.pub-main{max-width:880px;padding-top:20px}
+.cp-public main.pub-main.pub-qr{max-width:560px}
+
+.cp-public .pub-h1{font-size:clamp(20px,4vw,24px);font-weight:800;letter-spacing:-.02em;line-height:1.15;text-wrap:balance}
+.cp-public .card .pub-nota{font-size:16px;color:var(--mu);text-wrap:balance}
+.cp-public .card .pub-nota + .pub-nota{margin-top:6px}
+.cp-public code{background:var(--s2);border-radius:6px;padding:1px 6px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.92em}
+
+/* ---------- Dispositivo del bus: los dos botones de venta ---------- */
+.cp-public .pub-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:12px}
+.cp-public .pub-tile{display:flex;align-items:flex-end;min-height:120px;padding:18px 20px;border-radius:14px;
+  font-size:clamp(20px,4.5vw,26px);font-weight:800;letter-spacing:-.01em;line-height:1.15;text-align:left}
+
+/* ---------- Pantalla del QR ---------- */
+.cp-public .pub-centro{text-align:center}
+.cp-public .pub-titulo{font-size:clamp(22px,5vw,30px);font-weight:800;letter-spacing:-.02em;line-height:1.1}
+.cp-public .pub-importe{font-size:clamp(56px,17vw,104px);font-weight:800;letter-spacing:-.03em;line-height:1;margin:8px 0 6px}
+
+/* El panel del QR es siempre blanco con módulos negros (en cualquier tema): es lo que mejor se escanea.
+   El relleno hace de zona de silencio (≈4 módulos) que el código necesita alrededor. */
+.cp-public .pub-qr-caja{background:#fff;border-radius:14px;padding:6%;width:min(100%,440px,62vh);margin:0 auto 14px}
+.cp-public .pub-qr-caja svg{display:block;width:100%;height:auto}
+.cp-public .pub-st{display:inline-block;font-size:15px;padding:5px 14px;margin-top:10px}
+
+.cp-public .pub-icono{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;margin:0 auto 14px;background:var(--s2);color:var(--tx)}
+.cp-public .pub-icono.ok{background:var(--y);color:var(--ink)}
+.cp-public .pub-icono svg{width:44px;height:44px}
+.cp-public .pub-estado-t{font-size:clamp(24px,6vw,32px);font-weight:800;letter-spacing:-.02em;line-height:1.15;margin-bottom:0;text-wrap:balance}
+.cp-public .pub-estado-t + .pub-nota{margin-top:8px}
+
+/* ---------- Aviso temporal ---------- */
+.cp-public .toast{width:max-content;max-width:calc(100% - 32px);text-align:center}
+
+/* ---------- Pantallas angostas (móvil) ----------
+   La cabecera cabe en una sola fila, los botones de venta bajan un poco y en la tabla se oculta el ID
+   (largo y poco útil para el chofer) para que el Monto nunca quede fuera de pantalla. */
+@media(max-width:480px){
+  .cp-public .top{padding:12px 16px;gap:10px}
+  .cp-public .pub-bus{font-size:14px;padding:3px 11px}
+  .cp-public .top .btn{padding:6px 11px;font-size:14px}
+  .cp-public main.pub-main{padding-left:16px;padding-right:16px}
+  .cp-public .pub-tile{min-height:96px}
+  .cp-public .pub-col-id{display:none}
+}
