@@ -52,7 +52,7 @@ export function ticketsToCsv(tickets, drivers, types) {
     [
       fmtDate(t.ts),
       fmtTime(t.ts),
-      cell(driverName.get(t.driverId) ?? ''),
+      cell(driverName.get(t.driverId) ?? 'Sin atribuir'),
       cell(typeName.get(t.typeId) ?? ''),
       t.amount,
       t.driverAmount,

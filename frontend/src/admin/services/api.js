@@ -1,7 +1,7 @@
 /*
  * Capa de datos de ChiriPay Admin conectada al backend Express (puerto 3600, prefijo /api).
  *
- * El backend ya tiene pagos (GET /api/pagos), choferes, buses (con su chofer asignado) y el reparto.
+ * El backend ya tiene boletos (GET /api/boletos, con filtros), choferes, buses (con su chofer asignado) y el reparto.
  * Lo único que todavía sale de mock.js son los tipos de pasaje (flag types). Cuando crees ese endpoint, pasa su flag a true.
  *
  * URL del backend: variable REACT_APP_API_URL (archivo .env en frontend/, reinicia `npm start` al cambiarla).
@@ -94,73 +94,39 @@ export async function getDriverPct() {
   return (await http('GET', '/reparto')).porcentajeChofer; //                GET /api/reparto
 }
 
-/* ---------- Boletos (viene de GET /api/pagos) ---------- */
+/* ---------- Boletos (vienen de GET /api/boletos) ---------- */
 
-/* Tipo de pasaje según el prefijo de external_reference. Hoy tus controladores usan "PE-001" y "PA-001".
+/* Tipo de pasaje según el prefijo de external_reference ("PE-<uuid>", "PA-<uuid>").
    Los nombres deben coincidir con los de los tipos de pasaje (sin importar mayúsculas). */
 const TYPE_BY_PREFIX = { PE: 'escolar', PA: 'regular' };
 
-/* Solo para pagos ANTERIORES a que el backend guardara el bus en cada venta: bus según el resto de
-   external_reference ("PE-BXRT11" => patente BXRT 11). Los pagos nuevos ya traen busId y choferId. */
-const normPlate = (s) => String(s ?? '').replace(/[\s-]/g, '').toUpperCase();
+/* El backend entrega un boleto por orden cobrada, con su bus, su chofer y el reparto fijados al momento
+   de la venta (HU-12). Los pagos anteriores a esa versión llegan sin bus ni chofer: "sin atribuir". */
+const toTicket = (d, typeByName) => ({
+  id: d.id,
+  ts: new Date(d.fecha).getTime(),
+  busId: d.busId ?? null,
+  driverId: d.choferId ?? null,
+  typeId: typeByName.get(TYPE_BY_PREFIX[String(d.referencia ?? '').split('-')[0].toUpperCase()])?.id ?? null,
+  amount: d.monto,
+  driverAmount: d.monto_chofer,
+  companyAmount: d.monto_empresa,
+});
 
-// Fecha del pago: date_created del webhook; si falta, la fecha embebida en el _id de Mongo.
-const createdAt = (p) => {
-  const t = new Date(p.date_created).getTime();
-  return Number.isNaN(t) ? parseInt(String(p._id).slice(0, 8), 16) * 1000 : t;
-};
-
-function toTickets(pagos, { types, buses, pct }) {
-  const typeByName = new Map(types.map((t) => [t.name.toLowerCase(), t]));
-  const busByPlate = new Map(buses.map((b) => [normPlate(b.plate), b]));
-
-  // MercadoPago manda un webhook por cada cambio de estado de la orden: nos quedamos con el último de cada una.
-  const latest = new Map();
-  for (const p of pagos) {
-    const orderId = p.data?.id;
-    if (!orderId) continue;
-    const prev = latest.get(orderId);
-    if (!prev || createdAt(p) >= createdAt(prev)) latest.set(orderId, p);
-  }
-
-  return [...latest.values()]
-    .filter((p) => p.data.status === 'processed') // solo pagos cobrados
-    .map((p) => {
-      const [prefix, ...rest] = String(p.data.external_reference ?? '').split('-');
-      const type = typeByName.get(TYPE_BY_PREFIX[prefix.toUpperCase()]);
-      const pay = p.data.transactions?.payments?.[0];
-      const amount = Number(p.data.total_paid_amount ?? pay?.paid_amount ?? pay?.amount ?? 0);
-      // HU-12: los pagos nuevos traen el bus, el chofer y el reparto fijados al crear el QR, así que cambiar
-      // el chofer del bus o el porcentaje no altera ventas pasadas. Los anteriores no los tienen: para esos
-      // se deduce el bus por la referencia y se reparte con el porcentaje vigente (como antes).
-      const stamped = p.busId != null;
-      const legacyBus = stamped ? undefined : busByPlate.get(normPlate(rest.join('')));
-      const driverAmount = p.monto_chofer ?? Math.round((amount * pct) / 100);
-      return {
-        id: p.data.id,
-        ts: createdAt(p),
-        busId: stamped ? String(p.busId) : (legacyBus?.id ?? null),
-        driverId: stamped ? (p.choferId != null ? String(p.choferId) : null) : (legacyBus?.driverId ?? null),
-        typeId: type?.id ?? null,
-        amount,
-        driverAmount,
-        companyAmount: p.monto_empresa ?? amount - driverAmount,
-      };
-    })
-    .sort((a, b) => a.ts - b.ts);
-}
-
-/** Hoy /api/pagos no acepta filtros ni paginación: se filtra aquí. Con mucho volumen, muévelo al backend. */
+/**
+ * GET /api/boletos: el backend filtra por rango de fechas (desde, hasta), bus (busId) y chofer (choferId).
+ * Con un bus o un chofer elegido no llegan los boletos sin atribuir; sin esos filtros sí.
+ */
 export async function getTickets({ from, to, driverId, busId }) {
   if (!LIVE.tickets) return mock.getTickets({ from, to, driverId, busId });
-  const [data, types, buses, pct] = await Promise.all([http('GET', '/pagos'), getTypes(), getBuses(), getDriverPct()]);
-  return toTickets(list(data, 'pagos'), { types, buses, pct }).filter(
-    (t) =>
-      t.ts >= from &&
-      t.ts <= to &&
-      (!driverId || String(t.driverId) === String(driverId)) &&
-      (!busId || String(t.busId) === String(busId))
-  );
+  const query = new URLSearchParams();
+  if (Number.isFinite(from)) query.set('desde', new Date(from).toISOString());
+  if (Number.isFinite(to)) query.set('hasta', new Date(to).toISOString());
+  if (driverId) query.set('choferId', driverId);
+  if (busId) query.set('busId', busId);
+  const [data, types] = await Promise.all([http('GET', `/boletos?${query}`), getTypes()]);
+  const typeByName = new Map(types.map((t) => [t.name.toLowerCase(), t]));
+  return list(data, 'resultado').map((d) => toTicket(d, typeByName));
 }
 
 /* ---------- Escrituras ---------- */

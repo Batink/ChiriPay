@@ -104,6 +104,10 @@ const PagoSchema = Schema({
     }
 });
 
+// Los filtros del dashboard (GET /boletos) buscan por bus y por chofer
+PagoSchema.index({ busId: 1 });
+PagoSchema.index({ choferId: 1 });
+
 module.exports = model("Pago", PagoSchema, "pagos");
 
 // {

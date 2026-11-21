@@ -28,7 +28,7 @@ export default function TicketTable({ tickets, buses, types, limit }) {
               <td>{t.id}</td>
               <td>{fmtDate(t.ts)}</td>
               <td>{fmtTime(t.ts)}</td>
-              <td>{plate.get(t.busId) ?? 'Sin asignar'}</td>
+              <td>{plate.get(t.busId) ?? 'Sin atribuir'}</td>
               <td>{typeName.get(t.typeId) ?? 'Otro'}</td>
               <td className="r">{money(t.amount)}</td>
             </tr>

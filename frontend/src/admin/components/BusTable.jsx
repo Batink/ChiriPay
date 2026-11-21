@@ -15,6 +15,9 @@ export default function BusTable({ tickets, buses, drivers, filters }) {
     return byBus;
   }, [tickets]);
 
+  // Boletos sin bus (pagos anteriores a que cada venta guardara su bus): sin esta fila el total de la tabla no cuadra
+  const unattributed = stats.get(null);
+
   const visible = buses.filter(
     (b) =>
       (!filters.busId || String(b.id) === filters.busId) &&
@@ -43,6 +46,15 @@ export default function BusTable({ tickets, buses, drivers, filters }) {
               </tr>
             );
           })}
+          {unattributed && (
+            <tr>
+              <td>Sin atribuir</td>
+              <td>—</td>
+              <td>—</td>
+              <td className="r">{num(unattributed.count)}</td>
+              <td className="r">{money(unattributed.amount)}</td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>

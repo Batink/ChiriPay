@@ -232,6 +232,50 @@ const validarIdChofer = (id) => {
     }
 }
 
+// ---------------------------------------------------------------------------
+// BOLETOS (filtros del dashboard)
+// ---------------------------------------------------------------------------
+
+// Query de GET /boletos. Todos los filtros son opcionales y se combinan:
+//  - desde / hasta: fecha ISO ("2026-11-02T00:00:00-03:00") o milisegundos. Ambos extremos incluidos.
+//  - busId / choferId: ID de Mongo.
+// Devuelve { desde, hasta } en milisegundos y { busId, choferId } como texto,
+// solo con los que vengan; o lanza un Error con el detalle.
+const validarFiltrosBoletos = (query = {}) => {
+    const errores = [];
+    const filtros = {};
+
+    for (const campo of ["desde", "hasta"]) {
+        const valor = query[campo];
+        if (valor === undefined || valor === "") continue;
+
+        const texto = typeof valor === "string" ? valor.trim() : "";
+        const ms = /^\d{12,}$/.test(texto) ? Number(texto) : Date.parse(texto);
+        if (!texto || Number.isNaN(ms)) {
+            errores.push(`${campo} no es una fecha válida (usa formato ISO o milisegundos)`);
+        } else {
+            filtros[campo] = ms;
+        }
+    }
+
+    for (const campo of ["busId", "choferId"]) {
+        const valor = query[campo];
+        if (valor === undefined || valor === "") continue;
+
+        if (typeof valor !== "string" || !validator.isMongoId(valor)) {
+            errores.push(`${campo} debe ser un ID válido`);
+        } else {
+            filtros[campo] = valor;
+        }
+    }
+
+    if (errores.length > 0) {
+        throw new Error(errores.join(". "));
+    }
+
+    return filtros;
+}
+
 // Cuerpo de PUT /reparto: porcentaje entero (0 a 100) que se queda el chofer.
 const validarReparto = (parametros = {}) => {
     const valor = parametros.porcentajeChofer;
@@ -257,6 +301,7 @@ module.exports = {
     normalizarPatente,
     validarAsignacion,
     validarReparto,
+    validarFiltrosBoletos,
     validarChofer,
     validarIdChofer,
     normalizarRut
